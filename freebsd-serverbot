@@ -2,7 +2,7 @@
 #set -x
 
 #############################################################################
-# Version 0.1.0-UNSTABLE (20-06-2020)
+# Version 0.1.0-UNSTABLE (22-06-2020)
 #############################################################################
 
 #############################################################################
@@ -22,3 +22,382 @@
 
 # serverbot version
 SERVERBOT_VERSION='0.1.0'
+
+# when serverbot.conf can be found
+if [ -f /usr/local/etc/serverbot.conf ]; then
+    . /usr/local/etc/serverbot.conf
+    if [ "${SMT_ENABLE}" == 'yes' ] || [ "${SMT_ENABLE}" == 'YES' ]; then
+        CONFIG_SMT_ENABLE='1'
+    else
+        CONFIG_SMT_ENABLE='0'
+    fi
+    if [ "${LOAD_INTERVAL}" == '1' ]; then
+        CONFIG_LOAD_INTERVAL='1'
+    elif [ "${LOAD_INTERVAL}" == '5' ]; then
+        CONFIG_LOAD_INTERVAL='5'
+    elif [ "${LOAD_INTERVAL}" == '15' ]; then
+        CONFIG_LOAD_INTERVAL='15'
+    else
+        CONFIG_LOAD_INTERVAL='15'
+    fi
+else
+    SMT_ENABLE='NO'
+    LOAD_INTERVAL='15'
+fi
+
+####################################################################################################
+# GATHER FUNCTIONS
+####################################################################################################
+
+gather_information_server() {
+    FREEBSD_VERSION="$(freebsd-version)"
+    HOSTNAME="$(uname -n)"
+    OPERATING_SYSTEM="$(uname -o)"
+    KERNEL_NAME="$(uname -s)"
+    KERNEL_VERSION="$(uname -r)"
+    ARCHITECTURE="$(uname -m)"
+    #UPTIME="$(uptime -p)"
+}
+
+gather_information_network() {
+
+    echo "work in progress"
+}
+
+gather_metrics_cpu() {
+
+    ### general comments
+    # this function gathers cpu and load metrics from the system
+
+    ### baseline variables for further processing
+    # $CPU_TOTAL_CORES is based on the number of threads available to the operating system. this
+    # can be misleading since simultaneous multithreading (SMT) effectively doubles the amount of
+    # threads available to the operating system, while providing only a fraction of the performance
+    # of a real physical CPU core. SMT provides a efficiency boost at best, but with that in mind
+    # they get saturated quite fast and that's why we can still use them. you can set $SMT_ENABLE
+    # in serverbot.conf to 'yes' if you want serverbot to halve the amount of available threads.
+    if [ "${CONFIG_SMT_ENABLE}" == '1' ]; then
+        CPU_TOTAL_CORES="$(($(sysctl -n hw.ncpu) / 2))"
+    else
+        CPU_TOTAL_CORES="$(sysctl -n hw.ncpu)"
+    fi
+    CPU_MAXIMUM_LOAD="${CPU_TOTAL_CORES}.00"
+
+    # load average is calculated over respectively 1, 5 and 15 minutes. a load average of 1.00 means
+    # that one CPU core is working 100% of the time. a load average of 2.00 means that two CPU cores
+    # can be saturated fully. on a single core CPU, this will mean that the cpu is overloaded by 100%
+    # and that processes will have to wait on each other. the practical real load of a system depends
+    # on the average load and the number of cores and threads in the CPU.
+    CPU_LOAD_AVERAGE_1MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $1}')"
+    CPU_LOAD_AVERAGE_5MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $2}')"
+    CPU_LOAD_AVERAGE_15MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $3}')"
+    CPU_LOAD_PERCENTAGE_1MIN="$(echo "(${CPU_LOAD_AVERAGE_1MIN}/${CPU_MAXIMUM_LOAD})*100" | bc -l)"
+    CPU_LOAD_PERCENTAGE_5MIN="$(echo "(${CPU_LOAD_AVERAGE_5MIN}/${CPU_MAXIMUM_LOAD})*100" | bc -l)"
+    CPU_LOAD_PERCENTAGE_15MIN="$(echo "(${CPU_LOAD_AVERAGE_15MIN}/${CPU_MAXIMUM_LOAD})*100" | bc -l)"
+    CPU_LOAD_PERCENTAGE_1MIN_VIEW="$(echo ${CPU_LOAD_PERCENTAGE_1MIN} | cut -f1 -d ".")"
+    CPU_LOAD_PERCENTAGE_5MIN_VIEW="$(echo ${CPU_LOAD_PERCENTAGE_5MIN} | cut -f1 -d ".")"
+    CPU_LOAD_PERCENTAGE_15MIN_VIEW="$(echo ${CPU_LOAD_PERCENTAGE_15MIN} | cut -f1 -d ".")"
+    # one load average percentage will be used for reporting purposes. the load average interval can be
+    # configured by setting the $LOAD_INTERVAL variable in serverbot.conf. '15' minutes is the default
+    if [ "${CONFIG_LOAD_INTERVAL}" == '1' ]; then
+        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_1MIN_VIEW}"
+    elif [ "${CONFIG_LOAD_INTERVAL}" == '5' ]; then
+        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_5MIN_VIEW}"
+    elif [ "${CONFIG_LOAD_INTERVAL}" == '15' ]; then
+        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_15MIN_VIEW}"
+    else
+        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_15MIN_VIEW}"
+    fi
+}
+
+gather_metrics_memory() {
+
+    ### general comments
+    # this function gathers memory metrics with a lot of help from sysctl. every $MEMORY_*_COUNT
+    # consists of the amount of memory pages used. Each memory page consists of $MEMORY_PAGE_SIZE
+    # amount of bytes
+
+    # a decimal multiplier of 1000 is used for the following unit prefixes:
+    # B = byte, KB = kilobyte, MB = megabyte, GB = gigabyte, TB = terabyte
+
+    ### baseline variables for further processing
+    # page size: amount of memory (in bytes) reported by the firmware.
+    MEMORY_PAGE_SIZE="$(sysctl -n hw.pagesize)"
+
+    # hw.physman:  amount of physical memory (in bytes) minus kernel and pre-loaded modules
+    # hw.usermem:  amount of memory (in bytes) which is not wired.
+    # hw.realmem: 
+    MEMORY_TOTAL_PHYSICAL_B="$(sysctl -n hw.physmem)"
+    MEMORY_TOTAL_USER_B="$(sysctl -n hw.usermem)"
+    MEMORY_TOTAL_REAL_B="$(sysctl -n hw.realmem)"
+
+    # active:    contains active (recently referenced) pages
+    # inactive:  contains inactive pages that are aged out of the active queue
+    # laundry:   queue for managing dirty inactive pages which must be cleaned
+    # wired:     non-pageable memory that cannot be freed unless released by the owner
+    # free:      contains available memory for use by the system
+    MEMORY_ACTIVE_COUNT="$(sysctl -n vm.stats.vm.v_active_count)"
+    MEMORY_ACTIVE_B="$((${MEMORY_ACTIVE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_INACTIVE_COUNT="$(sysctl -n vm.stats.vm.v_inactive_count)"
+    MEMORY_INACTIVE_B="$((${MEMORY_INACTIVE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_LAUNDRY_COUNT="$(sysctl -n vm.stats.vm.v_laundry_count)"
+    MEMORY_LAUNDRY_B="$((${MEMORY_LAUNDRY_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_WIRED_COUNT="$(sysctl -n vm.stats.vm.v_wire_count)"
+    MEMORY_WIRED_B="$((${MEMORY_WIRED_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_CACHE_COUNT="$(sysctl -n vm.stats.vm.v_cache_count)"
+    MEMORY_CACHE_B="$((${MEMORY_CACHE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_FREE_COUNT="$(sysctl -n vm.stats.vm.v_free_count)"
+    MEMORY_FREE_B="$((${MEMORY_FREE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+
+    # used memory:   equal to active and wired memory combined
+    # total memory:  equal to active, inactive, laundry, wired, cache and free memory combined
+    MEMORY_USED_COUNT="$((${MEMORY_ACTIVE_COUNT} + ${MEMORY_WIRED_COUNT}))"
+    MEMORY_USED_B="$((${MEMORY_USED_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_TOTAL_COUNT="$((${MEMORY_ACTIVE_COUNT} + ${MEMORY_INACTIVE_COUNT} + ${MEMORY_LAUNDRY_COUNT} + ${MEMORY_WIRED_COUNT} + ${MEMORY_CACHE_COUNT} + ${MEMORY_FREE_COUNT}))"
+    MEMORY_TOTAL_B="$((${MEMORY_TOTAL_COUNT} * ${MEMORY_PAGE_SIZE}))"
+
+    # calculate percentages for reporting purposes
+    MEMORY_ACTIVE_PERCENTAGE="$((100*${MEMORY_ACTIVE_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_INACTIVE_PERCENTAGE="$((100*${MEMORY_INACTIVE_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_LAUNDRY_PERCENTAGE="$((100*${MEMORY_LAUNDRY_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_WIRED_PERCENTAGE="$((100*${MEMORY_WIRED_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_CACHE_PERCENTAGE="$((100*${MEMORY_CACHE_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_FREE_PERCENTAGE="$((100*${MEMORY_FREE_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_USED_PERCENTAGE="$((100*${MEMORY_USED_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_TOTAL_PERCENTAGE='100'
+
+    # halve percentages for more flexible reporting purposes
+    MEMORY_ACTIVE_PERCENTAGE_HALVED="$((${MEMORY_ACTIVE_PERCENTAGE} / 2))"
+    MEMORY_INACTIVE_PERCENTAGE_HALVED="$((${MEMORY_INACTIVE_PERCENTAGE} / 2))"
+    MEMORY_LAUNDRY_PERCENTAGE_HALVED="$((${MEMORY_LAUNDRY_PERCENTAGE} / 2))"
+    MEMORY_WIRED_PERCENTAGE_HALVED="$((${MEMORY_WIRED_PERCENTAGE} / 2))"
+    MEMORY_CACHE_PERCENTAGE_HALVED="$((${MEMORY_CACHE_PERCENTAGE} / 2))"
+    MEMORY_FREE_PERCENTAGE_HALVED="$((${MEMORY_FREE_PERCENTAGE} / 2))"
+    MEMORY_USED_PERCENTAGE_HALVED="$((${MEMORY_USED_PERCENTAGE} / 2))"
+    MEMORY_TOTAL_PERCENTAGE_HALVED="$((${MEMORY_TOTAL_PERCENTAGE} / 2))"
+
+    # calculate remainder percentage
+    MEMORY_ACTIVE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_ACTIVE_PERCENTAGE_HALVED}))"
+    MEMORY_INACTIVE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_INACTIVE_PERCENTAGE_HALVED}))"
+    MEMORY_LAUNDRY_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_LAUNDRY_PERCENTAGE_HALVED}))"
+    MEMORY_WIRED_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_WIRED_PERCENTAGE_HALVED}))"
+    MEMORY_CACHE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_CACHE_PERCENTAGE_HALVED}))"
+    MEMORY_FREE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_FREE_PERCENTAGE_HALVED}))"
+    MEMORY_USED_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_USED_PERCENTAGE_HALVED}))"
+    MEMORY_TOTAL_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_TOTAL_PERCENTAGE_HALVED}))"
+
+    ### human readability
+    # only a few among us like reading amounts of memory in bytes, that's why human readable
+    # unit of measures will be determined for reporting purposes
+
+    # these variables (all in bytes) make changing the lower and upper limits of unit prefixes easy
+    MEMORY_B_LOW='1'                # byte lower limit is '1', otherwise report '0'
+    MEMORY_B_HIGH='9999'            # byte upper limit is '9.999' bytes
+    MEMORY_KB_LOW='10000'           # kilobytes will be used starting at 10 kilobytes
+    MEMORY_KB_HIGH='9999999'        # kilobytes upper limit is '999.999' bytes
+    MEMORY_MB_LOW='10000000'        # megabytes will be used starting at 10 megabytes
+    MEMORY_MB_HIGH='9999999999'     # megabytes upper limit is '999.999.999' bytes
+    MEMORY_GB_LOW='10000000000'     # gigabytes will be used starting at 10 gigabytes
+    MEMORY_GB_HIGH='9999999999999'  # gigabytes upper limit is '999.999.999.999' bytes
+    MEMORY_TB_LOW='10000000000000'  # terabytes will be used starting at 10 terabytes
+    MEMORY_TB_HIGH=''               # there is no upper limit for terabytes
+    
+    # active memory
+    if [ "${MEMORY_ACTIVE_B}" -eq '0' ]; then
+        MEMORY_ACTIVE_VIEW='0 B'
+    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_ACTIVE_VIEW="${MEMORY_ACTIVE_B} B"
+    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / 1000)) KB"
+    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # inactive memory
+    if [ "${MEMORY_INACTIVE_B}" -eq '0' ]; then
+        MEMORY_INACTIVE_VIEW='0 B'
+    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_INACTIVE_VIEW="${MEMORY_INACTIVE_B} B"
+    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / 1000)) KB"
+    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # laundry memory
+    if [ "${MEMORY_LAUNDRY_B}" -eq '0' ]; then
+        MEMORY_LAUNDRY_VIEW='0 B'
+    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_LAUNDRY_VIEW="${MEMORY_LAUNDRY_B} B"
+    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / 1000)) KB"
+    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # wired memory
+    if [ "${MEMORY_WIRED_B}" -eq '0' ]; then
+        MEMORY_WIRED_VIEW='0 B'
+    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_WIRED_VIEW="${MEMORY_WIRED_B} B"
+    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / 1000)) KB"
+    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # cache memory
+    if [ "${MEMORY_CACHE_B}" -eq '0' ]; then
+        MEMORY_CACHE_VIEW='0 B'
+    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_CACHE_VIEW="${MEMORY_CACHE_B} B"
+    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / 1000)) KB"
+    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # free memory
+    if [ "${MEMORY_FREE_B}" -eq '0' ]; then
+        MEMORY_FREE_VIEW='0 B'
+    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_FREE_VIEW="${MEMORY_FREE_B} B"
+    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / 1000)) KB"
+    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # used memory
+    if [ "${MEMORY_USED_B}" -eq '0' ]; then
+        MEMORY_USED_VIEW='0 B'
+    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_USED_VIEW="${MEMORY_USED_B} B"
+    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / 1000)) KB"
+    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+    # total memory
+    if [ "${MEMORY_TOTAL_B}" -eq '0' ]; then
+        MEMORY_TOTAL_VIEW='0 B'
+    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_TOTAL_VIEW="${MEMORY_TOTAL_B} B"
+    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / 1000)) KB"
+    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / (1000 * 1000))) MB"
+    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / (1000 * 1000 * 1000))) GB"
+    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_TB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / (1000 * 1000 * 1000 * 1000))) TB"
+    fi
+
+# to investigate
+#vm.swap_maxpages: 65048160
+#vm.swzone: 552909360
+#vm.swap_total: 4294967296
+#vm.swap_reserved: 115604819968
+
+}
+
+gather_metrics_storage() {
+
+    echo "work in progress"
+}
+
+gather_updates() {
+
+    echo "work in progress"
+}
+
+gather_os_status() {
+
+    echo "work in progress"
+}
+
+####################################################################################################
+# FEATURE FUNCTIONS
+####################################################################################################
+
+feature_metrics_memory_cli() {
+
+    # gather required metrics
+    gather_metrics_memory
+
+    # variables
+    DIVIDER_LENGTH='36'
+
+    # output
+    printf "%-14s %10s %10s\n" "MEMORY" "AMOUNT" "%.TOTAL"
+    printf "=%.0s"  $(seq 1 ${DIVIDER_LENGTH})
+    printf "\n"
+    printf "%-14s %10s %10s\n" "Total" "${MEMORY_TOTAL_VIEW}" "${MEMORY_TOTAL_PERCENTAGE}%"
+    printf "%-14s %10s %10s" "|-- Free" "${MEMORY_FREE_VIEW}" "${MEMORY_FREE_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_FREE_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_FREE_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+    printf "%-14s %10s %10s" "|-- Used" "${MEMORY_USED_VIEW}" "${MEMORY_USED_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_USED_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_USED_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+    printf "%-14s %10s %10s" "|   |-- Active" "${MEMORY_ACTIVE_VIEW}" "${MEMORY_ACTIVE_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_ACTIVE_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_ACTIVE_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+    printf "%-14s %10s %10s" "|   \`-- Wired" "${MEMORY_WIRED_VIEW}" "${MEMORY_WIRED_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_WIRED_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_WIRED_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+    printf "%-14s %10s %10s" "|-- Inactive" "${MEMORY_INACTIVE_VIEW}" "${MEMORY_INACTIVE_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_INACTIVE_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_INACTIVE_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+    printf "%-14s %10s %10s" "|-- Laundry" "${MEMORY_LAUNDRY_VIEW}" "${MEMORY_LAUNDRY_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_LAUNDRY_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_LAUNDRY_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+    printf "%-14s %10s %10s" "\`-- Cache" "${MEMORY_CACHE_VIEW}" "${MEMORY_CACHE_PERCENTAGE}%"
+    printf "  ["
+    printf "#%.0s"  $(seq 0 ${MEMORY_CACHE_PERCENTAGE_HALVED})
+    printf " %.0s"  $(seq 0 ${MEMORY_CACHE_PERCENTAGE_HALVED_REMAINDER})
+    printf "]\n"
+}
+
+
+echo "Still under development"

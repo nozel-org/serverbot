@@ -19,3 +19,14 @@ Serverbot is a simple and small (<50 kilobytes/<1000 LOC) server monitoring tool
 
 ## Requirements
 We try to limit the number of required dependencies to a minimum. Outside FreeBSD base, `curl` and `wget` are required as of now.
+
+## Changelog
+### 0.1.0-UNSTABLE (22-06-2020)
+- Add gather function for [1](https://github.com/nozel-org/freebsd-serverbot/issues/1) and [2](https://github.com/nozel-org/freebsd-serverbot/issues/2).
+- Add gather function for [3](https://github.com/nozel-org/freebsd-serverbot/issues/3).
+- Add gather function for [6](https://github.com/nozel-org/freebsd-serverbot/issues/6) and [7](https://github.com/nozel-org/freebsd-serverbot/issues/7).
+- Add first attempt at extensive memory overview [2](https://github.com/nozel-org/freebsd-serverbot/issues/2).
+- Add rudimentary idea for function that checks configuration file.
+
+### 0.1.0-UNSTABLE (20-06-2020)
+- First version with some basic layout.
