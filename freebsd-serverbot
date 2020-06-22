@@ -1,0 +1,24 @@
+#!/bin/sh
+#set -x
+
+#############################################################################
+# Version 0.1.0-UNSTABLE (20-06-2020)
+#############################################################################
+
+#############################################################################
+# Copyright 2016-2020 Nozel/Sebas Veeke. Licenced under a Creative Commons
+# Attribution-NonCommercial-ShareAlike 4.0 International License.
+#
+# See https://creativecommons.org/licenses/by-nc-sa/4.0/
+#
+# Contact:
+# > e-mail      mail@nozel.org
+# > GitHub      nozel-org
+#############################################################################
+
+#############################################################################
+# VARIABLES
+#############################################################################
+
+# serverbot version
+SERVERBOT_VERSION='0.1.0'
