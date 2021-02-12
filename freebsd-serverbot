@@ -2,7 +2,7 @@
 #set -x
 
 #############################################################################
-# Version 0.1.0-UNSTABLE (22-06-2020)
+# Version 0.2.0-UNSTABLE (12-02-2021)
 #############################################################################
 
 #############################################################################
@@ -21,9 +21,9 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.1.0'
+SERVERBOT_VERSION='0.2.0'
 
-# when serverbot.conf can be found
+# check whether serverbot.conf is available and source it
 if [ -f /usr/local/etc/serverbot.conf ]; then
     . /usr/local/etc/serverbot.conf
     if [ "${SMT_ENABLE}" == 'yes' ] || [ "${SMT_ENABLE}" == 'YES' ]; then
@@ -46,6 +46,33 @@ else
 fi
 
 ####################################################################################################
+# GENERAL FUNCTIONS
+####################################################################################################
+
+serverbot_version() {
+    printf "Serverbot ${SERVERBOT_VERSION}\n"
+    printf "Copyright (C) 2016-2021 Nozel.\n"
+    printf "License CC Attribution-NonCommercial-ShareAlike 4.0 Int.\n\n"
+    printf "Written by Sebas Veeke"
+}
+
+serverbot_help() {
+    printf "Usage:\n"
+    printf " serverbot [feature]... [method]...\n"
+    printf " serverbot [option]...\n\n"
+    printf "Features:\n"
+    printf "Methods:\n"
+    printf " --cli             Output [feature] to command line\n"
+    printf " --telegram        Output [feature] to Telegram bot\n\n"
+    #printf "--email           Output [feature] to e-mail"
+    printf "Options:\n"
+    printf " --cron            Effectuate cron changes from serverbot config\n"
+    printf " --validate        Check validity of serverbot.conf\n"
+    printf " --help            Display this help and exit\n"
+    printf " --version         Display version information and exit\n"
+}
+
+####################################################################################################
 # GATHER FUNCTIONS
 ####################################################################################################
 
@@ -60,12 +87,10 @@ gather_information_server() {
 }
 
 gather_information_network() {
-
     echo "work in progress"
 }
 
 gather_metrics_cpu() {
-
     ### general comments
     # this function gathers cpu and load metrics from the system
 
@@ -97,7 +122,7 @@ gather_metrics_cpu() {
     CPU_LOAD_PERCENTAGE_1MIN_VIEW="$(echo ${CPU_LOAD_PERCENTAGE_1MIN} | cut -f1 -d ".")"
     CPU_LOAD_PERCENTAGE_5MIN_VIEW="$(echo ${CPU_LOAD_PERCENTAGE_5MIN} | cut -f1 -d ".")"
     CPU_LOAD_PERCENTAGE_15MIN_VIEW="$(echo ${CPU_LOAD_PERCENTAGE_15MIN} | cut -f1 -d ".")"
-    # one load average percentage will be used for reporting purposes. the load average interval can be
+    # one load average percentage will be used for reporting/alerting purposes. the load average interval can be
     # configured by setting the $LOAD_INTERVAL variable in serverbot.conf. '15' minutes is the default
     if [ "${CONFIG_LOAD_INTERVAL}" == '1' ]; then
         CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_1MIN_VIEW}"
@@ -111,7 +136,6 @@ gather_metrics_cpu() {
 }
 
 gather_metrics_memory() {
-
     ### general comments
     # this function gathers memory metrics with a lot of help from sysctl. every $MEMORY_*_COUNT
     # consists of the amount of memory pages used. Each memory page consists of $MEMORY_PAGE_SIZE
@@ -331,17 +355,14 @@ gather_metrics_memory() {
 }
 
 gather_metrics_storage() {
-
     echo "work in progress"
 }
 
 gather_updates() {
-
     echo "work in progress"
 }
 
 gather_os_status() {
-
     echo "work in progress"
 }
 
@@ -349,8 +370,35 @@ gather_os_status() {
 # FEATURE FUNCTIONS
 ####################################################################################################
 
-feature_metrics_memory_cli() {
+feature_server_overview_cli() {
+    # gather required metrics
+    gather_metrics_cpu
+    gather_metrics_memory
 
+    # output
+    printf "HOST:"
+    printf "OS:"
+    printf "KERNEL:"
+    printf "ARCHITECTURE:"
+    printf "UPTIME:"
+    printf ""
+    printf "IP:"
+    printf ""
+    printf "LOAD:"
+    printf "MEMORY:"
+    printf "DISK:"
+}
+
+feature_metrics_cpu_cli() {
+    # gather required metrics
+    gather_metrics_cpu
+    gather_metrics_memory
+
+    # output
+    printf "%-18s %-10s %-10s %-10s\n" "" "1 min" "5 min" "15 min"
+    printf "%-18s %-10s %-10s %-10s\n" "load average:" "${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN_VIEW}%)" "${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN_VIEW}%)" "${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN_VIEW}%)"
+}
+feature_metrics_memory_full_cli() {
     # gather required metrics
     gather_metrics_memory
 
@@ -399,5 +447,35 @@ feature_metrics_memory_cli() {
     printf "]\n"
 }
 
+feature_metrics_memory_excerpt_cli() {
+    # gather required metrics
+    gather_metrics_memory
 
-echo "Still under development"
+        # output
+    printf "%-14s %10s %10s\n" "Total" "${MEMORY_TOTAL_VIEW}" "${MEMORY_TOTAL_PERCENTAGE}%"
+    printf "%-14s %10s %10s" "|-- Free" "${MEMORY_FREE_VIEW}" "${MEMORY_FREE_PERCENTAGE}%"
+    printf "\n"
+    printf "%-14s %10s %10s" "|-- Used" "${MEMORY_USED_VIEW}" "${MEMORY_USED_PERCENTAGE}%"
+    printf "\n"
+    printf "%-14s %10s %10s" "|   |-- Active" "${MEMORY_ACTIVE_VIEW}" "${MEMORY_ACTIVE_PERCENTAGE}%"
+    printf "\n"
+    printf "%-14s %10s %10s" "|   \`-- Wired" "${MEMORY_WIRED_VIEW}" "${MEMORY_WIRED_PERCENTAGE}%"
+    printf "\n"
+    printf "%-14s %10s %10s" "|-- Inactive" "${MEMORY_INACTIVE_VIEW}" "${MEMORY_INACTIVE_PERCENTAGE}%"
+    printf "\n"
+    printf "%-14s %10s %10s" "|-- Laundry" "${MEMORY_LAUNDRY_VIEW}" "${MEMORY_LAUNDRY_PERCENTAGE}%"
+    printf "\n"
+    printf "%-14s %10s %10s" "\`-- Cache" "${MEMORY_CACHE_VIEW}" "${MEMORY_CACHE_PERCENTAGE}%"
+}
+
+feature_metrics_memory_free_cli() {
+    # gather required metrics
+    gather_metrics_memory
+
+    # output
+    printf "%-14s %12s %12s %12s\n" "" "total" "used" "free"
+    printf "\n"
+    printf "%-14s %12s %12s %12s\n" "Mem:" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_VIEW}" "${MEMORY_FREE_VIEW}"
+}
+
+echo "Under development"
