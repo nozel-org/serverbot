@@ -1,7 +1,7 @@
 # Serverbot
 `serverbot` is a simple and small (<50 kilobytes/<1000 LOC) server monitoring tool that is both easy to use and easy to extend. We found most monitoring software to be overkill for our needs and made a simplistic and lightweight alternative. It's well commented and can be easily extended or hacked to provide more features.
 
-This started as a full rewrite of [`serverbot` for Linux](https://github.com/nozel-org/serverbot), but then specifically tailored to FreeBSD and POSIX shell. It will have more functionality than its Linux counterpart. It's still a work in progress and isn't ready for use on production systems yet.
+This started as a full rewrite of [`serverbot` for Linux](https://github.com/nozel-org/serverbot), but then specifically tailored to FreeBSD and POSIX shell. It will have more functionality than its Linux counterpart.
 
 ## Features
 * Easy to use CLI interface with clear help text.
@@ -88,4 +88,5 @@ Copy `freebsd-serverbot` to `/usr/bin/serverbot` (owner=`root`, group=`wheel`, p
 If you have questions/suggestions about `serverbot` or find bugs, please let us know via the issue tracker.
 
 ## Changelog
-### 1.0.0-STABLE (14-02-2021)
+### 1.0.0-STABLE (1[4-02-2021](https://github.com/nozel-org/freebsd-serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
+- First stable release.
