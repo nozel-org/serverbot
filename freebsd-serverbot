@@ -1,12 +1,11 @@
 #!/bin/sh
-#set -x
 
 #############################################################################
-# Version 0.3.0-UNSTABLE (13-02-2021)
+# Version 1.0.0-STABLE (14-02-2021)
 #############################################################################
 
 #############################################################################
-# Copyright 2016-2020 Nozel/Sebas Veeke. Licenced under a Creative Commons
+# Copyright 2016-2021 Nozel/Sebas Veeke. Licenced under a Creative Commons
 # Attribution-NonCommercial-ShareAlike 4.0 International License.
 #
 # See https://creativecommons.org/licenses/by-nc-sa/4.0/
@@ -21,21 +20,21 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='0.3.0'
+SERVERBOT_VERSION='1.0.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /usr/local/etc/serverbot.conf ]; then
     . /usr/local/etc/serverbot.conf
-    if [ "${SMT_ENABLE}" == 'yes' ] || [ "${SMT_ENABLE}" == 'YES' ]; then
+    if [ "${SMT_ENABLE}" = 'yes' ] || [ "${SMT_ENABLE}" = 'YES' ]; then
         CONFIG_SMT_ENABLE='1'
     else
         CONFIG_SMT_ENABLE='0'
     fi
-    if [ "${LOAD_INTERVAL}" == '1' ]; then
+    if [ "${LOAD_INTERVAL}" = '1' ]; then
         CONFIG_LOAD_INTERVAL='1'
-    elif [ "${LOAD_INTERVAL}" == '5' ]; then
+    elif [ "${LOAD_INTERVAL}" = '5' ]; then
         CONFIG_LOAD_INTERVAL='5'
-    elif [ "${LOAD_INTERVAL}" == '15' ]; then
+    elif [ "${LOAD_INTERVAL}" = '15' ]; then
         CONFIG_LOAD_INTERVAL='15'
     else
         CONFIG_LOAD_INTERVAL='15'
@@ -49,23 +48,241 @@ fi
 # ARGUMENT HANDLING
 ####################################################################################################
 
+# populate validation variables with zeros for validation
+ARGUMENT_OPTION='0'
+ARGUMENT_VERSION='0'
+ARGUMENT_HELP='0'
+ARGUMENT_FEATURE='0'
+ARGUMENT_SERVER='0'
+ARGUMENT_UPTIME='0'
+ARGUMENT_MEMORY='0'
+ARGUMENT_MEMORYTREE='0'
+ARGUMENT_MEMORYTREE_WIDE='0'
+ARGUMENT_DISK='0'
+ARGUMENT_NETWORK='0'
+ARGUMENT_SUMMARY='0'
+ARGUMENT_OVERVIEW='0'
+ARGUMENT_METHOD='0'
+ARGUMENT_CLI='0'
+ARGUMENT_TELEGRAM='0'
+
+# watch arguments
+while test -n "$1"; do
+    case "$1" in
+        # options
+        --version|-version|version|--v|-v)
+            ARGUMENT_VERSION='1'
+            ARGUMENT_OPTION='1'
+            shift
+            ;;
+
+        --help|-help|help|--h|-h)
+            ARGUMENT_HELP='1'
+            ARGUMENT_OPTION='1'
+            shift
+            ;;
+
+        # features
+        --server|server)
+            ARGUMENT_SERVER='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --uptime|uptime)
+            ARGUMENT_UPTIME='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --cpu|cpu)
+            ARGUMENT_CPU='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --memory|memory)
+            ARGUMENT_MEMORY='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --memorytree|memorytree)
+            ARGUMENT_MEMORYTREE='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --memorytree-wide|memorytree-wide)
+            ARGUMENT_MEMORYTREE_WIDE='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --disk|disk)
+            ARGUMENT_DISK='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --network|network)
+            ARGUMENT_NETWORK='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --summary|summary)
+            ARGUMENT_SUMMARY='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --overview|overview)
+            ARGUMENT_OVERVIEW='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        # methods
+        --cli|cli)
+            ARGUMENT_CLI='1'
+            ARGUMENT_METHOD='1'
+            shift
+            ;;
+
+        --telegram|telegram)
+            ARGUMENT_TELEGRAM='1'
+            ARGUMENT_METHOD='1'
+            shift
+            ;;
+
+        # other
+        *)
+            ARGUMENT_NONE='1'
+            shift
+            ;;
+    esac
+done
+
+
 ####################################################################################################
 # ERROR FUNCTIONS
 ####################################################################################################
+
+error_invalid_argument() {
+    printf "serverbot: invalid argument used.\nUse 'serverbot --help' for a list of valid arguments.\n"
+    exit 1
+}
+error_more_than_one_feature() {
+    printf "serverbot: only one serverbot feature can be used at a time.\nUse 'serverbot --help' for a list of valid arguments.\n"
+    exit 1
+}
+
+error_more_than_one_method() {
+    printf "serverbot: only one serverbot method can be used at a time.\nUse 'serverbot --help' for a list of valid arguments.\n"
+    exit 1
+}
 
 ####################################################################################################
 # REQUIREMENT FUNCTIONS
 ####################################################################################################
 
+serverbot_argument_validate() {
+    # combine argument categories
+    ARGUMENT_FEATURES_COMBINED="$((ARGUMENT_SERVER + ARGUMENT_UPTIME + ARGUMENT_CPU + ARGUMENT_MEMORY + ARGUMENT_MEMORYTREE + ARGUMENT_MEMORYTREE_WIDE + ARGUMENT_DISK + ARGUMENT_NETWORK + ARGUMENT_SUMMARY + ARGUMENT_OVERVIEW))"
+    ARGUMENT_METHOD_COMBINED="$((ARGUMENT_CLI + ARGUMENT_TELEGRAM))"
+
+    if [ "${ARGUMENT_NONE}" = '1' ]; then
+        error_invalid_argument
+    # validate amount of selected features and return error when more than 1 feature is selected
+    elif [ "${ARGUMENT_FEATURES_COMBINED}" -gt '1' ]; then
+        error_more_than_one_feature
+    # validate amount of selected methods and return error when more than 1 feature is selected
+    elif [ "${ARGUMENT_METHOD_COMBINED}" -gt '1' ]; then
+        error_more_than_one_method
+    fi
+}
 ####################################################################################################
 # GENERAL FUNCTIONS
 ####################################################################################################
 
+convert_bytes_to_human_readable_memory() {
+    # this function converts $1 (amount of bytes) to a human readable format based on lower and upper limits
+    MEMORY_B_LOW='1'                      # byte lower limit is '1', otherwise report '0'
+    MEMORY_B_HIGH='9999'                  # byte upper limit is '9.999' bytes
+    MEMORY_KB_LOW='10000'                 # kilobytes will be used starting at 10 kilobytes
+    MEMORY_KB_HIGH='9999999'              # kilobytes upper limit is '999.999' bytes
+    MEMORY_MB_LOW='10000000'              # megabytes will be used starting at 10 megabytes
+    MEMORY_MB_HIGH='9999999999'           # megabytes upper limit is '999.999.999' bytes
+    MEMORY_GB_LOW='10000000000'           # gigabytes will be used starting at 10 gigabytes
+    MEMORY_GB_HIGH='9999999999999'        # gigabytes upper limit is '999.999.999.999' bytes
+    MEMORY_TB_LOW='10000000000000'        # terabytes will be used starting at 10 terabytes
+    MEMORY_TB_HIGH='9999999999999999'     # terabytes upper limit is '999.999.999.999.999 bytes
+    MEMORY_PB_LOW='10000000000000000'     # petabytes will be used starting at 10 petabytes
+    MEMORY_PB_HIGH=''                     # there is no upper limit for terabytes
+
+    # a decimal multiplier of 1000 is used for the following unit prefixes:
+    # B = byte, KB = kilobyte, MB = megabyte, GB = gigabyte, TB = terabyte, PB = petabyte
+    if [ "$1" -eq '0' ]; then
+        MEMORY_VIEW='0 B'
+    elif [ "$1" -gt "${MEMORY_B_LOW}" ] && [ "$1" -le "${MEMORY_B_HIGH}" ]; then
+        MEMORY_VIEW="$1 B"
+    elif [ "$1" -gt "${MEMORY_KB_LOW}" ] && [ "$1" -le "${MEMORY_KB_HIGH}" ]; then
+        MEMORY_VIEW="$(($1 / 1000)) KB"
+    elif [ "$1" -gt "${MEMORY_MB_LOW}" ] && [ "$1" -le "${MEMORY_MB_HIGH}" ]; then
+        MEMORY_VIEW="$(($1 / (1000 * 1000))) MB"
+    elif [ "$1" -gt "${MEMORY_GB_LOW}" ] && [ "$1" -le "${MEMORY_GB_HIGH}" ]; then
+        MEMORY_VIEW="$(($1 / (1000 * 1000 * 1000))) GB"
+    elif [ "$1" -gt "${MEMORY_TB_LOW}" ] && [ "$1" -le "${MEMORY_TB_HIGH}" ]; then
+        MEMORY_VIEW="$(($1 / (1000 * 1000 * 1000 * 1000))) TB"
+    elif [ "$1" -gt "${MEMORY_PB_LOW}" ]; then
+        MEMORY_VIEW="$(($1 / (1000 * 1000 * 1000 * 1000 * 1000))) PB"
+    fi
+}
+
+convert_bytes_to_human_readable_disk() {
+    # this function converts $1 (amount of bytes) to a human readable format based on lower and upper limits
+    DISK_B_LOW='1'                      # byte lower limit is '1', otherwise report '0'
+    DISK_B_HIGH='9999'                  # byte upper limit is '9.999' bytes
+    DISK_KB_LOW='10000'                 # kilobytes will be used starting at 10 kilobytes
+    DISK_KB_HIGH='9999999'              # kilobytes upper limit is '999.999' bytes
+    DISK_MB_LOW='10000000'              # megabytes will be used starting at 10 megabytes
+    DISK_MB_HIGH='9999999999'           # megabytes upper limit is '999.999.999' bytes
+    DISK_GB_LOW='10000000000'           # gigabytes will be used starting at 10 gigabytes
+    DISK_GB_HIGH='9999999999999'        # gigabytes upper limit is '999.999.999.999' bytes
+    DISK_TB_LOW='10000000000000'        # terabytes will be used starting at 10 terabytes
+    DISK_TB_HIGH='9999999999999999'     # terabytes upper limit is '999.999.999.999.999 bytes
+    DISK_PB_LOW='10000000000000000'     # petabytes will be used starting at 10 petabytes
+    DISK_PB_HIGH=''                     # there is no upper limit for terabytes
+
+    # a decimal multiplier of 1000 is used for the following unit prefixes:
+    # B = byte, KB = kilobyte, MB = megabyte, GB = gigabyte, TB = terabyte, PB = petabyte
+    if [ "$1" -eq '0' ]; then
+        ROOT_PARTITION_VIEW='0 B'
+    elif [ "$1" -gt "${DISK_B_LOW}" ] && [ "$1" -le "${DISK_B_HIGH}" ]; then
+        ROOT_PARTITION_VIEW="$1 B"
+    elif [ "$1" -gt "${DISK_KB_LOW}" ] && [ "$1" -le "${DISK_KB_HIGH}" ]; then
+        ROOT_PARTITION_VIEW="$(($1 / 1000)) KB"
+    elif [ "$1" -gt "${DISK_MB_LOW}" ] && [ "$1" -le "${DISK_MB_HIGH}" ]; then
+        ROOT_PARTITION_VIEW="$(($1 / (1000 * 1000))) MB"
+    elif [ "$1" -gt "${DISK_GB_LOW}" ] && [ "$1" -le "${DISK_GB_HIGH}" ]; then
+        ROOT_PARTITION_VIEW="$(($1 / (1000 * 1000 * 1000))) GB"
+    elif [ "$1" -gt "${DISK_TB_LOW}" ] && [ "$1" -le "${DISK_TB_HIGH}" ]; then
+        ROOT_PARTITION_VIEW="$(($1 / (1000 * 1000 * 1000 * 1000))) TB"
+    elif [ "$1" -gt "${DISK_PB_LOW}" ]; then
+        ROOT_PARTITION_VIEW="$(($1 / (1000 * 1000 * 1000 * 1000 * 1000))) PB"
+    fi
+}
+
+####################################################################################################
+# OPTION FUNCTIONS
+####################################################################################################
+
 serverbot_version() {
-    printf "Serverbot ${SERVERBOT_VERSION}\n"
+    printf "Serverbot %s\n" "${SERVERBOT_VERSION}"
     printf "Copyright (C) 2016-2021 Nozel.\n"
     printf "License CC Attribution-NonCommercial-ShareAlike 4.0 Int.\n\n"
-    printf "Written by Sebas Veeke"
+    printf "Written by Sebas Veeke\n"
 }
 
 serverbot_help() {
@@ -73,25 +290,22 @@ serverbot_help() {
     printf " serverbot [feature]... [method]...\n"
     printf " serverbot [option]...\n\n"
     printf "Features:\n"
-    printf " --server           Basic server information\n"
-    printf " --uptime           Server uptime metrics\n"
-    printf " --cpu              CPU load metrics\n"
-    printf " --memory           Basic memory usage metrics\n"
-    printf " --memory2          Extended memory usage metrics\n"
-    printf " --memory3          Wide mode extended memory usage metrics\n"
-    printf " --disk             Disk usage metrics\n"
-    printf " --network          Interfaces and IP addresses\n"
-    printf " --overview         Complete server overview\n\n"
+    printf " --server               Basic server information\n"
+    printf " --uptime               Server uptime metrics\n"
+    printf " --cpu                  CPU load metrics\n"
+    printf " --memory               Basic memory usage metrics\n"
+    printf " --memorytree           Extended memory usage metrics\n"
+    printf " --memorytree-wide      Wide mode extended memory usage metrics\n"
+    printf " --disk                 Disk usage metrics\n"
+    printf " --network              Interfaces and IP addresses\n"
+    printf " --summary              Basic server overview\n"
+    printf " --overview             Extended server overview\n\n"
     printf "Methods:\n"
-    printf " --cli (default)    Output [feature] to command line\n\n"
+    printf " --cli (default)        Output [feature] to command line\n\n"
     printf "Options:\n"
-    printf " --help             Display this help and exit\n"
-    printf " --version          Display version information and exit\n"
+    printf " --help                 Display this help and exit\n"
+    printf " --version              Display version information and exit\n"
 }
-
-####################################################################################################
-# OPTION FUNCTIONS
-####################################################################################################
 
 ####################################################################################################
 # GATHER FUNCTIONS
@@ -110,14 +324,14 @@ gather_metrics_uptime() {
     # the freebsd uptime command is very inflexible so serverbot generates its own uptime metrics from epoch
     EPOCH_TIME="$(date +%s)"
     EPOCH_UPTIME="$(sysctl kern.boottime | awk '{printf $5}' | tr -d ',')"
-    UPTIME_CALC="$((${EPOCH_TIME}-${EPOCH_UPTIME}))"
-    UPTIME_DAY="$((${UPTIME_CALC}/86400))"
-    UPTIME_DAY_ROUNDED="$((${UPTIME_DAY}*86400))"
-    UPTIME_HOUR="$(((${UPTIME_CALC}-${UPTIME_DAY_ROUNDED})/3600))"
-    UPTIME_HOUR_ROUNDED="$((${UPTIME_HOUR}*3600))"
-    UPTIME_MIN="$(((${UPTIME_CALC}-${UPTIME_DAY_ROUNDED}-${UPTIME_HOUR_ROUNDED})/60))"
-    UPTIME_MIN_ROUNDED="$((${UPTIME_MIN}*60))"
-    UPTIME_SEC="$(((${UPTIME_CALC}-${UPTIME_DAY_ROUNDED}-${UPTIME_HOUR_ROUNDED})-${UPTIME_MIN_ROUNDED}))"
+    UPTIME_CALC="$((EPOCH_TIME-EPOCH_UPTIME))"
+    UPTIME_DAY="$((UPTIME_CALC/86400))"
+    UPTIME_DAY_ROUNDED="$((UPTIME_DAY*86400))"
+    UPTIME_HOUR="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED)/3600))"
+    UPTIME_HOUR_ROUNDED="$((UPTIME_HOUR*3600))"
+    UPTIME_MIN="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED-UPTIME_HOUR_ROUNDED)/60))"
+    UPTIME_MIN_ROUNDED="$((UPTIME_MIN*60))"
+    UPTIME_SEC="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED-UPTIME_HOUR_ROUNDED)-UPTIME_MIN_ROUNDED))"
 }
 
 gather_metrics_cpu() {
@@ -127,7 +341,7 @@ gather_metrics_cpu() {
     # of a real physical CPU core. SMT provides a efficiency boost at best, but with that in mind
     # they get saturated quite fast and that's why we can still use them. you can set $SMT_ENABLE
     # in serverbot.conf to 'yes' if you want serverbot to halve the amount of available threads.
-    if [ "${CONFIG_SMT_ENABLE}" == '1' ]; then
+    if [ "${CONFIG_SMT_ENABLE}" = '1' ]; then
         CPU_TOTAL_CORES="$(($(sysctl -n hw.ncpu) / 2))"
     else
         CPU_TOTAL_CORES="$(sysctl -n hw.ncpu)"
@@ -146,20 +360,20 @@ gather_metrics_cpu() {
     CPU_LOAD_AVERAGE_5MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $2}')"
     CPU_LOAD_AVERAGE_15MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $3}')"
     # remove dots and one or two leading zeros from 'x.xx' load
-    CPU_LOAD_AVERAGE_1MIN_CALC="$(echo ${CPU_LOAD_AVERAGE_1MIN} | tr -d '.' | sed 's/^0//' | sed 's/^0//')"
-    CPU_LOAD_AVERAGE_5MIN_CALC="$(echo ${CPU_LOAD_AVERAGE_5MIN} | tr -d '.' | sed 's/^0//' | sed 's/^0//')"
-    CPU_LOAD_AVERAGE_15MIN_CALC="$(echo ${CPU_LOAD_AVERAGE_15MIN} | tr -d '.' | sed 's/^0//' | sed 's/^0//')"
-    CPU_LOAD_PERCENTAGE_1MIN="$((100*${CPU_LOAD_AVERAGE_1MIN_CALC}/${CPU_MAXIMUM_LOAD_CALC}))"
-    CPU_LOAD_PERCENTAGE_5MIN="$((100*${CPU_LOAD_AVERAGE_5MIN_CALC}/${CPU_MAXIMUM_LOAD_CALC}))"
-    CPU_LOAD_PERCENTAGE_15MIN="$((100*${CPU_LOAD_AVERAGE_15MIN_CALC}/${CPU_MAXIMUM_LOAD_CALC}))"
+    CPU_LOAD_AVERAGE_1MIN_CALC="$(echo "${CPU_LOAD_AVERAGE_1MIN}" | tr -d '.' | sed 's/^0//' | sed 's/^0//')"
+    CPU_LOAD_AVERAGE_5MIN_CALC="$(echo "${CPU_LOAD_AVERAGE_5MIN}" | tr -d '.' | sed 's/^0//' | sed 's/^0//')"
+    CPU_LOAD_AVERAGE_15MIN_CALC="$(echo "${CPU_LOAD_AVERAGE_15MIN}" | tr -d '.' | sed 's/^0//' | sed 's/^0//')"
+    CPU_LOAD_PERCENTAGE_1MIN="$((100*CPU_LOAD_AVERAGE_1MIN_CALC/CPU_MAXIMUM_LOAD_CALC))"
+    CPU_LOAD_PERCENTAGE_5MIN="$((100*CPU_LOAD_AVERAGE_5MIN_CALC/CPU_MAXIMUM_LOAD_CALC))"
+    CPU_LOAD_PERCENTAGE_15MIN="$((100*CPU_LOAD_AVERAGE_15MIN_CALC/CPU_MAXIMUM_LOAD_CALC))"
 
     # one load average percentage will be used for reporting/alerting purposes. the load average interval can be
     # configured by setting the $LOAD_INTERVAL variable in serverbot.conf. '15' minutes is the default
-    if [ "${CONFIG_LOAD_INTERVAL}" == '1' ]; then
+    if [ "${CONFIG_LOAD_INTERVAL}" = '1' ]; then
         CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_1MIN_VIEW}"
-    elif [ "${CONFIG_LOAD_INTERVAL}" == '5' ]; then
+    elif [ "${CONFIG_LOAD_INTERVAL}" = '5' ]; then
         CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_5MIN_VIEW}"
-    elif [ "${CONFIG_LOAD_INTERVAL}" == '15' ]; then
+    elif [ "${CONFIG_LOAD_INTERVAL}" = '15' ]; then
         CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_15MIN_VIEW}"
     else
         CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_15MIN_VIEW}"
@@ -190,261 +404,100 @@ gather_metrics_memory() {
     # wired:     non-pageable memory that cannot be freed unless released by the owner
     # free:      contains available memory for use by the system
     MEMORY_ACTIVE_COUNT="$(sysctl -n vm.stats.vm.v_active_count)"
-    MEMORY_ACTIVE_B="$((${MEMORY_ACTIVE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_ACTIVE_B="$((MEMORY_ACTIVE_COUNT * MEMORY_PAGE_SIZE))"
     MEMORY_INACTIVE_COUNT="$(sysctl -n vm.stats.vm.v_inactive_count)"
-    MEMORY_INACTIVE_B="$((${MEMORY_INACTIVE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_INACTIVE_B="$((MEMORY_INACTIVE_COUNT * MEMORY_PAGE_SIZE))"
     MEMORY_LAUNDRY_COUNT="$(sysctl -n vm.stats.vm.v_laundry_count)"
-    MEMORY_LAUNDRY_B="$((${MEMORY_LAUNDRY_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_LAUNDRY_B="$((MEMORY_LAUNDRY_COUNT * MEMORY_PAGE_SIZE))"
     MEMORY_WIRED_COUNT="$(sysctl -n vm.stats.vm.v_wire_count)"
-    MEMORY_WIRED_B="$((${MEMORY_WIRED_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_WIRED_B="$((MEMORY_WIRED_COUNT * MEMORY_PAGE_SIZE))"
     MEMORY_CACHE_COUNT="$(sysctl -n vm.stats.vm.v_cache_count)"
-    MEMORY_CACHE_B="$((${MEMORY_CACHE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_CACHE_B="$((MEMORY_CACHE_COUNT * MEMORY_PAGE_SIZE))"
     MEMORY_FREE_COUNT="$(sysctl -n vm.stats.vm.v_free_count)"
-    MEMORY_FREE_B="$((${MEMORY_FREE_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_FREE_B="$((MEMORY_FREE_COUNT * MEMORY_PAGE_SIZE))"
 
     # used memory:   equal to active and wired memory combined
     # total memory:  equal to active, inactive, laundry, wired, cache and free memory combined
-    MEMORY_USED_COUNT="$((${MEMORY_ACTIVE_COUNT} + ${MEMORY_WIRED_COUNT}))"
-    MEMORY_USED_B="$((${MEMORY_USED_COUNT} * ${MEMORY_PAGE_SIZE}))"
-    MEMORY_TOTAL_COUNT="$((${MEMORY_ACTIVE_COUNT} + ${MEMORY_INACTIVE_COUNT} + ${MEMORY_LAUNDRY_COUNT} + ${MEMORY_WIRED_COUNT} + ${MEMORY_CACHE_COUNT} + ${MEMORY_FREE_COUNT}))"
-    MEMORY_TOTAL_B="$((${MEMORY_TOTAL_COUNT} * ${MEMORY_PAGE_SIZE}))"
+    MEMORY_USED_COUNT="$((MEMORY_ACTIVE_COUNT + MEMORY_WIRED_COUNT))"
+    MEMORY_USED_B="$((MEMORY_USED_COUNT * MEMORY_PAGE_SIZE))"
+    MEMORY_TOTAL_COUNT="$((MEMORY_ACTIVE_COUNT + MEMORY_INACTIVE_COUNT + MEMORY_LAUNDRY_COUNT + MEMORY_WIRED_COUNT + MEMORY_CACHE_COUNT + MEMORY_FREE_COUNT))"
+    MEMORY_TOTAL_B="$((MEMORY_TOTAL_COUNT * MEMORY_PAGE_SIZE))"
 
     # calculate percentages for reporting purposes
-    MEMORY_ACTIVE_PERCENTAGE="$((100*${MEMORY_ACTIVE_COUNT}/${MEMORY_TOTAL_COUNT}))"
-    MEMORY_INACTIVE_PERCENTAGE="$((100*${MEMORY_INACTIVE_COUNT}/${MEMORY_TOTAL_COUNT}))"
-    MEMORY_LAUNDRY_PERCENTAGE="$((100*${MEMORY_LAUNDRY_COUNT}/${MEMORY_TOTAL_COUNT}))"
-    MEMORY_WIRED_PERCENTAGE="$((100*${MEMORY_WIRED_COUNT}/${MEMORY_TOTAL_COUNT}))"
-    MEMORY_CACHE_PERCENTAGE="$((100*${MEMORY_CACHE_COUNT}/${MEMORY_TOTAL_COUNT}))"
-    MEMORY_FREE_PERCENTAGE="$((100*${MEMORY_FREE_COUNT}/${MEMORY_TOTAL_COUNT}))"
-    MEMORY_USED_PERCENTAGE="$((100*${MEMORY_USED_COUNT}/${MEMORY_TOTAL_COUNT}))"
+    MEMORY_ACTIVE_PERCENTAGE="$((100 * MEMORY_ACTIVE_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_INACTIVE_PERCENTAGE="$((100 * MEMORY_INACTIVE_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_LAUNDRY_PERCENTAGE="$((100 * MEMORY_LAUNDRY_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_WIRED_PERCENTAGE="$((100 * MEMORY_WIRED_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_CACHE_PERCENTAGE="$((100 * MEMORY_CACHE_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_FREE_PERCENTAGE="$((100 * MEMORY_FREE_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_USED_PERCENTAGE="$((100 * MEMORY_USED_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_TOTAL_PERCENTAGE='100'
 
     # halve percentages for more flexible reporting purposes
-    MEMORY_ACTIVE_PERCENTAGE_HALVED="$((${MEMORY_ACTIVE_PERCENTAGE} / 2))"
-    MEMORY_INACTIVE_PERCENTAGE_HALVED="$((${MEMORY_INACTIVE_PERCENTAGE} / 2))"
-    MEMORY_LAUNDRY_PERCENTAGE_HALVED="$((${MEMORY_LAUNDRY_PERCENTAGE} / 2))"
-    MEMORY_WIRED_PERCENTAGE_HALVED="$((${MEMORY_WIRED_PERCENTAGE} / 2))"
-    MEMORY_CACHE_PERCENTAGE_HALVED="$((${MEMORY_CACHE_PERCENTAGE} / 2))"
-    MEMORY_FREE_PERCENTAGE_HALVED="$((${MEMORY_FREE_PERCENTAGE} / 2))"
-    MEMORY_USED_PERCENTAGE_HALVED="$((${MEMORY_USED_PERCENTAGE} / 2))"
-    MEMORY_TOTAL_PERCENTAGE_HALVED="$((${MEMORY_TOTAL_PERCENTAGE} / 2))"
+    MEMORY_ACTIVE_PERCENTAGE_HALVED="$((MEMORY_ACTIVE_PERCENTAGE / 2))"
+    MEMORY_INACTIVE_PERCENTAGE_HALVED="$((MEMORY_INACTIVE_PERCENTAGE / 2))"
+    MEMORY_LAUNDRY_PERCENTAGE_HALVED="$((MEMORY_LAUNDRY_PERCENTAGE / 2))"
+    MEMORY_WIRED_PERCENTAGE_HALVED="$((MEMORY_WIRED_PERCENTAGE / 2))"
+    MEMORY_CACHE_PERCENTAGE_HALVED="$((MEMORY_CACHE_PERCENTAGE / 2))"
+    MEMORY_FREE_PERCENTAGE_HALVED="$((MEMORY_FREE_PERCENTAGE / 2))"
+    MEMORY_USED_PERCENTAGE_HALVED="$((MEMORY_USED_PERCENTAGE / 2))"
+    MEMORY_TOTAL_PERCENTAGE_HALVED="$((MEMORY_TOTAL_PERCENTAGE / 2))"
 
     # calculate remainder percentage
-    MEMORY_ACTIVE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_ACTIVE_PERCENTAGE_HALVED}))"
-    MEMORY_INACTIVE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_INACTIVE_PERCENTAGE_HALVED}))"
-    MEMORY_LAUNDRY_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_LAUNDRY_PERCENTAGE_HALVED}))"
-    MEMORY_WIRED_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_WIRED_PERCENTAGE_HALVED}))"
-    MEMORY_CACHE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_CACHE_PERCENTAGE_HALVED}))"
-    MEMORY_FREE_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_FREE_PERCENTAGE_HALVED}))"
-    MEMORY_USED_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_USED_PERCENTAGE_HALVED}))"
-    MEMORY_TOTAL_PERCENTAGE_HALVED_REMAINDER="$((50 - ${MEMORY_TOTAL_PERCENTAGE_HALVED}))"
+    MEMORY_ACTIVE_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_ACTIVE_PERCENTAGE_HALVED))"
+    MEMORY_INACTIVE_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_INACTIVE_PERCENTAGE_HALVED))"
+    MEMORY_LAUNDRY_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_LAUNDRY_PERCENTAGE_HALVED))"
+    MEMORY_WIRED_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_WIRED_PERCENTAGE_HALVED))"
+    MEMORY_CACHE_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_CACHE_PERCENTAGE_HALVED))"
+    MEMORY_FREE_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_FREE_PERCENTAGE_HALVED))"
+    MEMORY_USED_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_USED_PERCENTAGE_HALVED))"
+    MEMORY_TOTAL_PERCENTAGE_HALVED_REMAINDER="$((50 - MEMORY_TOTAL_PERCENTAGE_HALVED))"
 
     # only a few among us like reading amounts of memory in bytes, that's why human readable
     # unit of measures will be determined for reporting purposes
-
-    # these variables (all in bytes) make changing the lower and upper limits of unit prefixes easy
-    MEMORY_B_LOW='1'                # byte lower limit is '1', otherwise report '0'
-    MEMORY_B_HIGH='9999'            # byte upper limit is '9.999' bytes
-    MEMORY_KB_LOW='10000'           # kilobytes will be used starting at 10 kilobytes
-    MEMORY_KB_HIGH='9999999'        # kilobytes upper limit is '999.999' bytes
-    MEMORY_MB_LOW='10000000'        # megabytes will be used starting at 10 megabytes
-    MEMORY_MB_HIGH='9999999999'     # megabytes upper limit is '999.999.999' bytes
-    MEMORY_GB_LOW='10000000000'     # gigabytes will be used starting at 10 gigabytes
-    MEMORY_GB_HIGH='9999999999999'  # gigabytes upper limit is '999.999.999.999' bytes
-    MEMORY_TB_LOW='10000000000000'  # terabytes will be used starting at 10 terabytes
-    MEMORY_TB_HIGH=''               # there is no upper limit for terabytes
-    
-    # active memory
-    if [ "${MEMORY_ACTIVE_B}" -eq '0' ]; then
-        MEMORY_ACTIVE_VIEW='0 B'
-    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_ACTIVE_VIEW="${MEMORY_ACTIVE_B} B"
-    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / 1000)) KB"
-    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_ACTIVE_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_ACTIVE_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_ACTIVE_VIEW="$((${MEMORY_ACTIVE_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # inactive memory
-    if [ "${MEMORY_INACTIVE_B}" -eq '0' ]; then
-        MEMORY_INACTIVE_VIEW='0 B'
-    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_INACTIVE_VIEW="${MEMORY_INACTIVE_B} B"
-    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / 1000)) KB"
-    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_INACTIVE_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_INACTIVE_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_INACTIVE_VIEW="$((${MEMORY_INACTIVE_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # laundry memory
-    if [ "${MEMORY_LAUNDRY_B}" -eq '0' ]; then
-        MEMORY_LAUNDRY_VIEW='0 B'
-    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_LAUNDRY_VIEW="${MEMORY_LAUNDRY_B} B"
-    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / 1000)) KB"
-    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_LAUNDRY_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_LAUNDRY_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_LAUNDRY_VIEW="$((${MEMORY_LAUNDRY_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # wired memory
-    if [ "${MEMORY_WIRED_B}" -eq '0' ]; then
-        MEMORY_WIRED_VIEW='0 B'
-    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_WIRED_VIEW="${MEMORY_WIRED_B} B"
-    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / 1000)) KB"
-    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_WIRED_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_WIRED_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_WIRED_VIEW="$((${MEMORY_WIRED_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # cache memory
-    if [ "${MEMORY_CACHE_B}" -eq '0' ]; then
-        MEMORY_CACHE_VIEW='0 B'
-    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_CACHE_VIEW="${MEMORY_CACHE_B} B"
-    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / 1000)) KB"
-    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_CACHE_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_CACHE_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_CACHE_VIEW="$((${MEMORY_CACHE_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # free memory
-    if [ "${MEMORY_FREE_B}" -eq '0' ]; then
-        MEMORY_FREE_VIEW='0 B'
-    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_FREE_VIEW="${MEMORY_FREE_B} B"
-    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / 1000)) KB"
-    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_FREE_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_FREE_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_FREE_VIEW="$((${MEMORY_FREE_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # used memory
-    if [ "${MEMORY_USED_B}" -eq '0' ]; then
-        MEMORY_USED_VIEW='0 B'
-    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_USED_VIEW="${MEMORY_USED_B} B"
-    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / 1000)) KB"
-    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_USED_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_USED_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_USED_VIEW="$((${MEMORY_USED_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # total memory
-    if [ "${MEMORY_TOTAL_B}" -eq '0' ]; then
-        MEMORY_TOTAL_VIEW='0 B'
-    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_B_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_B_HIGH}" ]; then
-        MEMORY_TOTAL_VIEW="${MEMORY_TOTAL_B} B"
-    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_KB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_KB_HIGH}" ]; then
-        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / 1000)) KB"
-    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_MB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_MB_HIGH}" ]; then
-        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / (1000 * 1000))) MB"
-    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_GB_LOW}" ] && [ "${MEMORY_TOTAL_B}" -le "${MEMORY_GB_HIGH}" ]; then
-        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${MEMORY_TOTAL_B}" -gt "${MEMORY_TB_LOW}" ]; then
-        MEMORY_TOTAL_VIEW="$((${MEMORY_TOTAL_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    fi
+    convert_bytes_to_human_readable_memory ${MEMORY_ACTIVE_B}
+    MEMORY_ACTIVE_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_INACTIVE_B}
+    MEMORY_INACTIVE_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_LAUNDRY_B}
+    MEMORY_LAUNDRY_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_WIRED_B}
+    MEMORY_WIRED_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_CACHE_B}
+    MEMORY_CACHE_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_FREE_B}
+    MEMORY_FREE_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_USED_B}
+    MEMORY_USED_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_TOTAL_B}
+    MEMORY_TOTAL_VIEW="${MEMORY_VIEW}"
 
 # to investigate
 #vm.swap_maxpages: 65048160
 #vm.swzone: 552909360
 #vm.swap_total: 4294967296
 #vm.swap_reserved: 115604819968
-
 }
 
 gather_metrics_disk() {
-    # this function gathers root partition metrics with a lot of help from df. posix mode is used
+    # this function gathers root partition metrics with help from df. posix mode is used
     # for compatibility purposes.
-
-    # a decimal multiplier of 1000 is used for the following unit prefixes:
-    # B = byte, KB = kilobyte, MB = megabyte, GB = gigabyte, TB = terabyte, PB = petabyte
-
     ROOT_PARTITION_SIZE_512="$(df -P / | sed -n '2 p' | awk '{printf $4}')"
+    ROOT_PARTITION_SIZE_B="$((ROOT_PARTITION_SIZE_512 * 512))"
     ROOT_PARTITION_USED_512="$(df -P / | sed -n '2 p' | awk '{printf $3}')"
-    ROOT_PARTITION_USED_PERCENTAGE="$((100*${ROOT_PARTITION_USED_512}/${ROOT_PARTITION_SIZE_512}))"
-    ROOT_PARTITION_SIZE_B="$((${ROOT_PARTITION_SIZE_512}*512))"
-    ROOT_PARTITION_USED_B="$((${ROOT_PARTITION_USED_512}*512))"
+    ROOT_PARTITION_USED_B="$((ROOT_PARTITION_USED_512 * 512))"
+    ROOT_PARTITION_USED_PERCENTAGE="$((100 * ROOT_PARTITION_USED_512 / ROOT_PARTITION_SIZE_512))"
+    ROOT_PARTITION_FREE_B="$((ROOT_PARTITION_SIZE_B - ROOT_PARTITION_USED_B))"
+    ROOT_PARTITION_FREE_PERCENTAGE="$((100 * ROOT_PARTITION_FREE_B / ROOT_PARTITION_SIZE_B))"
 
     # only a few among us like reading amounts of memory in bytes, that's why human readable
     # unit of measures will be determined for reporting purposes
-
-    # these variables (all in bytes) make changing the lower and upper limits of unit prefixes easy
-    DISK_B_LOW='1'                      # byte lower limit is '1', otherwise report '0'
-    DISK_B_HIGH='9999'                  # byte upper limit is '9.999' bytes
-    DISK_KB_LOW='10000'                 # kilobytes will be used starting at 10 kilobytes
-    DISK_KB_HIGH='9999999'              # kilobytes upper limit is '999.999' bytes
-    DISK_MB_LOW='10000000'              # megabytes will be used starting at 10 megabytes
-    DISK_MB_HIGH='9999999999'           # megabytes upper limit is '999.999.999' bytes
-    DISK_GB_LOW='10000000000'           # gigabytes will be used starting at 10 gigabytes
-    DISK_GB_HIGH='9999999999999'        # gigabytes upper limit is '999.999.999.999' bytes
-    DISK_TB_LOW='10000000000000'        # terabytes will be used starting at 10 terabytes
-    DISK_TB_HIGH='9999999999999999'     # terabytes upper limit is '999.999.999.999.999 bytes
-    DISK_PB_LOW='10000000000000000'     # petabytes will be used starting at 10 petabytes
-    DISK_PB_HIGH=''                     # there is no upper limit for terabytes
-
-    # total root partition size
-    if [ "${ROOT_PARTITION_SIZE_B}" -eq '0' ]; then
-        ROOT_PARTITION_SIZE_VIEW='0 B'
-    elif [ "${ROOT_PARTITION_SIZE_B}" -gt "${DISK_B_LOW}" ] && [ "${ROOT_PARTITION_SIZE_B}" -le "${DISK_B_HIGH}" ]; then
-        ROOT_PARTITION_SIZE_VIEW="${ROOT_PARTITION_SIZE_B} B"
-    elif [ "${ROOT_PARTITION_SIZE_B}" -gt "${DISK_KB_LOW}" ] && [ "${ROOT_PARTITION_SIZE_B}" -le "${DISK_KB_HIGH}" ]; then
-        ROOT_PARTITION_SIZE_VIEW="$((${ROOT_PARTITION_SIZE_B} / 1000)) KB"
-    elif [ "${ROOT_PARTITION_SIZE_B}" -gt "${DISK_MB_LOW}" ] && [ "${ROOT_PARTITION_SIZE_B}" -le "${DISK_MB_HIGH}" ]; then
-        ROOT_PARTITION_SIZE_VIEW="$((${ROOT_PARTITION_SIZE_B} / (1000 * 1000))) MB"
-    elif [ "${ROOT_PARTITION_SIZE_B}" -gt "${DISK_GB_LOW}" ] && [ "${ROOT_PARTITION_SIZE_B}" -le "${DISK_GB_HIGH}" ]; then
-        ROOT_PARTITION_SIZE_VIEW="$((${ROOT_PARTITION_SIZE_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${ROOT_PARTITION_SIZE_B}" -gt "${DISK_TB_LOW}" ] && [ "${ROOT_PARTITION_SIZE_B}" -le "${DISK_TB_HIGH}" ]; then
-        ROOT_PARTITION_SIZE_VIEW="$((${ROOT_PARTITION_SIZE_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    elif [ "${ROOT_PARTITION_SIZE_B}" -gt "${DISK_PB_LOW}" ]; then
-        ROOT_PARTITION_SIZE_VIEW="$((${ROOT_PARTITION_SIZE_B} / (1000 * 1000 * 1000 * 1000 * 1000))) TB"
-    fi
-
-    # used root partition size
-    if [ "${ROOT_PARTITION_USED_B}" -eq '0' ]; then
-        ROOT_PARTITION_USED_VIEW='0 B'
-    elif [ "${ROOT_PARTITION_USED_B}" -gt "${DISK_B_LOW}" ] && [ "${ROOT_PARTITION_USED_B}" -le "${DISK_B_HIGH}" ]; then
-        ROOT_PARTITION_USED_VIEW="${ROOT_PARTITION_USED_B} B"
-    elif [ "${ROOT_PARTITION_USED_B}" -gt "${DISK_KB_LOW}" ] && [ "${ROOT_PARTITION_USED_B}" -le "${DISK_KB_HIGH}" ]; then
-        ROOT_PARTITION_USED_VIEW="$((${ROOT_PARTITION_USED_B} / 1000)) KB"
-    elif [ "${ROOT_PARTITION_USED_B}" -gt "${DISK_MB_LOW}" ] && [ "${ROOT_PARTITION_USED_B}" -le "${DISK_MB_HIGH}" ]; then
-        ROOT_PARTITION_USED_VIEW="$((${ROOT_PARTITION_USED_B} / (1000 * 1000))) MB"
-    elif [ "${ROOT_PARTITION_USED_B}" -gt "${DISK_GB_LOW}" ] && [ "${ROOT_PARTITION_USED_B}" -le "${DISK_GB_HIGH}" ]; then
-        ROOT_PARTITION_USED_VIEW="$((${ROOT_PARTITION_USED_B} / (1000 * 1000 * 1000))) GB"
-    elif [ "${ROOT_PARTITION_USED_B}" -gt "${DISK_TB_LOW}" ] && [ "${ROOT_PARTITION_USED_B}" -le "${DISK_TB_HIGH}" ]; then
-        ROOT_PARTITION_USED_VIEW="$((${ROOT_PARTITION_USED_B} / (1000 * 1000 * 1000 * 1000))) TB"
-    elif [ "${ROOT_PARTITION_USED_B}" -gt "${DISK_PB_LOW}" ]; then
-        ROOT_PARTITION_USED_VIEW="$((${ROOT_PARTITION_USED_B} / (1000 * 1000 * 1000 * 1000 * 1000))) TB"
-    fi
+    convert_bytes_to_human_readable_disk ${ROOT_PARTITION_SIZE_B}
+    ROOT_PARTITION_SIZE_VIEW="${ROOT_PARTITION_VIEW}"
+    convert_bytes_to_human_readable_disk ${ROOT_PARTITION_USED_B}
+    ROOT_PARTITION_USED_VIEW="${ROOT_PARTITION_VIEW}"
+    convert_bytes_to_human_readable_disk ${ROOT_PARTITION_FREE_B}
+    ROOT_PARTITION_FREE_VIEW="${ROOT_PARTITION_VIEW}"
 }
 
 ####################################################################################################
@@ -456,8 +509,8 @@ feature_metrics_server_cli() {
     gather_metrics_server
 
     # output
-    printf "${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})\n"
-    printf "${HOSTNAME}"
+    printf "%s\n" "${HOSTNAME}"
+    printf "%s\n" "${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})"
 }
 
 feature_metrics_uptime_cli() {
@@ -467,57 +520,57 @@ feature_metrics_uptime_cli() {
     # output
     if [ "${UPTIME_DAY}" -ge '1' ]; then
         if [ "${UPTIME_DAY}" -eq '1' ]; then
-            printf "${UPTIME_DAY} day "
+            printf "%s" "${UPTIME_DAY} day "
         else
-            printf "${UPTIME_DAY} days "
+            printf "%s" "${UPTIME_DAY} days "
         fi
         if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            printf "${UPTIME_HOUR} hour "
+            printf "%s" "${UPTIME_HOUR} hour "
         else
-            printf "${UPTIME_HOUR} hours "
+            printf "%s" "${UPTIME_HOUR} hours "
         fi
         if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "${UPTIME_MIN} minute "
+            printf "%s" "${UPTIME_MIN} minute "
         else
-            printf "${UPTIME_MIN} minutes "
+            printf "%s" "${UPTIME_MIN} minutes "
         fi
         if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n"
+            printf "%s\n" "${UPTIME_SEC} second"
         else
-            printf "${UPTIME_SEC} seconds\n"
+            printf "%s\n" "${UPTIME_SEC} seconds"
         fi
     elif [ "${UPTIME_HOUR}" -ge '1' ]; then
         if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            printf "${UPTIME_HOUR} hour "
+            printf "%s" "${UPTIME_HOUR} hour "
         else
-            printf "${UPTIME_HOUR} hours "
+            printf "%s" "${UPTIME_HOUR} hours "
         fi
         if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "${UPTIME_MIN} minute "
+            printf "%s" "${UPTIME_MIN} minute "
         else
-            printf "${UPTIME_MIN} minutes "
+            printf "%s" "${UPTIME_MIN} minutes "
         fi
         if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n"
+            printf "%s\n" "${UPTIME_SEC} second"
         else
-            printf "${UPTIME_SEC} seconds\n"
+            printf "%s\n" "${UPTIME_SEC} seconds"
         fi
     elif [ "${UPTIME_MIN}" -ge '1' ]; then
         if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "${UPTIME_MIN} minute "
+            printf "%s" "${UPTIME_MIN} minute "
         else
-            printf "${UPTIME_MIN} minutes "
+            printf "%s" "${UPTIME_MIN} minutes "
         fi
         if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n"
+            printf "%s\n" "${UPTIME_SEC} second"
         else
-            printf "${UPTIME_SEC} seconds\n"
+            printf "%s\n" "${UPTIME_SEC} seconds"
         fi
     elif [ "${UPTIME_SEC}" -ge '1' ]; then
         if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n"
+            printf "%s\n" "${UPTIME_SEC} second"
         else
-            printf "${UPTIME_SEC} seconds\n"
+            printf "%s\n" "${UPTIME_SEC} seconds"
         fi
     fi
 }
@@ -527,8 +580,8 @@ feature_metrics_cpu_cli() {
     gather_metrics_cpu
 
     # output
-    printf "%-18s %-10s %-10s %-10s\n" "" "1 min" "5 min" "15 min"
-    printf "%-18s %-10s %-10s %-10s\n" "load average:" "${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%)" "${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%)" "${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
+    printf "%-14s %-12s %-14s %-14s\n" "cpu load" "1 min" "5 min" "15 min"
+    printf "%-14s %-12s %-14s %-14s\n" "" "${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%)" "${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%)" "${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
 }
 
 feature_metrics_memory_cli() {
@@ -536,12 +589,11 @@ feature_metrics_memory_cli() {
     gather_metrics_memory
 
     # output
-    printf "%-14s %12s %12s %12s\n" "" "total" "used" "free"
-    printf "%-14s %12s %12s %12s\n" "Mem:" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_VIEW}" "${MEMORY_FREE_VIEW}"
-    printf "\n"
+    printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "free"
+    printf "%-14s %-12s %-14s %-14s\n" "" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_VIEW} (${MEMORY_USED_PERCENTAGE}%)" "${MEMORY_FREE_VIEW} (${MEMORY_FREE_PERCENTAGE}%)"
 }
 
-feature_metrics_memory2_cli() {
+feature_metrics_memorytree_cli() {
     # gather required metrics
     gather_metrics_memory
 
@@ -563,7 +615,7 @@ feature_metrics_memory2_cli() {
     printf "\n"
 }
 
-feature_metrics_memory3_cli() {
+feature_metrics_memorytree_wide_cli() {
     # gather required metrics
     gather_metrics_memory
 
@@ -571,7 +623,7 @@ feature_metrics_memory3_cli() {
     DIVIDER_LENGTH='36'
 
     # output
-    printf "%-14s %10s %10s\n" "MEMORY" "AMOUNT" "%.TOTAL"
+    printf "%-14s %10s %10s\n" "Memory" "Amount" "%.Total"
     printf "=%.0s"  $(seq 1 ${DIVIDER_LENGTH})
     printf "\n"
     printf "%-14s %10s %10s\n" "Total" "${MEMORY_TOTAL_VIEW}" "${MEMORY_TOTAL_PERCENTAGE}%"
@@ -617,22 +669,27 @@ feature_metrics_disk_cli() {
     gather_metrics_disk
 
     # output
-    printf "${ROOT_PARTITION_USED_VIEW} / ${ROOT_PARTITION_SIZE_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%)\n"
+    printf "%-14s %-12s %-14s %-14s\n" "disk usage" "total" "used" "free"
+    printf "%-14s %-12s %-14s %-14s\n" "" "${ROOT_PARTITION_SIZE_VIEW}" "${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%)" "${ROOT_PARTITION_FREE_VIEW} (${ROOT_PARTITION_FREE_PERCENTAGE}%)"
 }
 
-feature_overview_basic_cli() {
+feature_metrics_network_cli() {
+    echo 'WIP'
+}
+
+feature_summary_cli() {
     # gather required metrics
     gather_metrics_cpu
     gather_metrics_memory
     gather_metrics_disk
 
     # output
-    printf "%-9s %9s %1s\n" "load" "${CPU_LOAD_AVERAGE_15MIN}" "(${CPU_LOAD_PERCENTAGE_15MIN}%)"
+    printf "%-9s %9s %1s %7s %4s\n" "load" "${CPU_LOAD_AVERAGE_15MIN}" "" "" "(${CPU_LOAD_PERCENTAGE_15MIN}%)"
     printf "%-9s %9s %1s %7s %4s\n" "memory" "${MEMORY_USED_VIEW}" "/" "${MEMORY_TOTAL_VIEW}" "(${MEMORY_USED_PERCENTAGE}%)"
     printf "%-9s %9s %1s %7s %4s\n" "disk" "${ROOT_PARTITION_USED_VIEW}" "/" "${ROOT_PARTITION_SIZE_VIEW}" "(${ROOT_PARTITION_USED_PERCENTAGE}%)"
 }
 
-feature_overview_extended_cli() {
+feature_overview_cli() {
     # gather required metrics
     gather_metrics_server
     gather_metrics_uptime
@@ -641,70 +698,84 @@ feature_overview_extended_cli() {
     gather_metrics_disk
 
     # output
-    printf "hostname:      ${HOSTNAME}\n"
-    printf "os/kernel:     ${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})\n"
-    printf "uptime:        "
-    if [ "${UPTIME_DAY}" -ge '1' ]; then
-        if [ "${UPTIME_DAY}" -eq '1' ]; then
-            printf "${UPTIME_DAY} day "
-        else
-            printf "${UPTIME_DAY} days "
-        fi
-        if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            printf "${UPTIME_HOUR} hour "
-        else
-            printf "${UPTIME_HOUR} hours "
-        fi
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "${UPTIME_MIN} minute "
-        else
-            printf "${UPTIME_MIN} minutes "
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n\n"
-        else
-            printf "${UPTIME_SEC} seconds\n\n"
-        fi
-    elif [ "${UPTIME_HOUR}" -ge '1' ]; then
-        if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            printf "${UPTIME_HOUR} hour "
-        else
-            printf "${UPTIME_HOUR} hours "
-        fi
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "${UPTIME_MIN} minute "
-        else
-            printf "${UPTIME_MIN} minutes "
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n\n"
-        else
-            printf "${UPTIME_SEC} seconds\n\n"
-        fi
-    elif [ "${UPTIME_MIN}" -ge '1' ]; then
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "${UPTIME_MIN} minute "
-        else
-            printf "${UPTIME_MIN} minutes "
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n\n"
-        else
-            printf "${UPTIME_SEC} seconds\n\n"
-        fi
-    elif [ "${UPTIME_SEC}" -ge '1' ]; then
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "${UPTIME_SEC} second\n\n"
-        else
-            printf "${UPTIME_SEC} seconds\n\n"
-        fi
-    fi
-    printf "%-14s %-10s %-10s %-10s\n" "cpu load:" "1 min" "5 min" "15 min"
-    printf "%-14s %-10s %-10s %-10s\n" "" "${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%)" "${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%)" "${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
+    printf "hostname       %s\n" "${HOSTNAME}"
+    printf "os/kernel      %s\n" "${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})"
+    printf "uptime         "
+    feature_metrics_uptime_cli
     printf "\n"
-    printf "%-14s %-10s %-10s %-10s\n" "memory:" "total" "used" "free"
-    printf "%-14s %-10s %-10s %-10s\n" "" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_VIEW}" "${MEMORY_FREE_VIEW}"
+    feature_metrics_cpu_cli
     printf "\n"
-    printf "%-14s %-10s %-10s %-10s\n" "disk usage:" "total" "used" "free"
-    printf "%-14s %-10s %-10s %-10s\n" "" "${ROOT_PARTITION_SIZE_VIEW}" "${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%)" "WIP (WIP%)"
+    feature_metrics_memory_cli
+    printf "\n"
+    feature_metrics_disk_cli
 }
+
+####################################################################################################
+# METHOD FUNCTIONS
+####################################################################################################
+
+####################################################################################################
+# MAIN FUNCTIONS
+####################################################################################################
+
+serverbot_main() {
+    # validate arguments
+    serverbot_argument_validate
+
+    # when both a feature and method cli are given
+    if [ "${ARGUMENT_SERVER}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_server_cli
+    elif [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_uptime_cli
+    elif [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_cpu_cli
+    elif [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_memory_cli
+    elif [ "${ARGUMENT_MEMORYTREE}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_memorytree_cli
+    elif [ "${ARGUMENT_MEMORYTREE_WIDE}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_memorytree_wide_cli
+    elif [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_disk_cli
+    elif [ "${ARGUMENT_NETWORK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_metrics_network_cli
+    elif [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_summary_cli
+    elif [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        feature_overview_cli
+    # method cli is the default method, so even when no method is given method cli is used
+    elif [ "${ARGUMENT_SERVER}" = '1' ]; then
+        feature_metrics_server_cli
+    elif [ "${ARGUMENT_UPTIME}" = '1' ]; then
+        feature_metrics_uptime_cli
+    elif [ "${ARGUMENT_CPU}" = '1' ]; then
+        feature_metrics_cpu_cli
+    elif [ "${ARGUMENT_MEMORY}" = '1' ]; then
+        feature_metrics_memory_cli
+    elif [ "${ARGUMENT_MEMORYTREE}" = '1' ]; then
+        feature_metrics_memorytree_cli
+    elif [ "${ARGUMENT_MEMORYTREE_WIDE}" = '1' ]; then
+        feature_metrics_memorytree_wide_cli
+    elif [ "${ARGUMENT_DISK}" = '1' ]; then
+        feature_metrics_disk_cli
+    elif [ "${ARGUMENT_NETWORK}" = '1' ]; then
+        feature_metrics_network_cli
+    elif [ "${ARGUMENT_SUMMARY}" = '1' ]; then
+        feature_summary_cli
+    elif [ "${ARGUMENT_OVERVIEW}" = '1' ]; then
+        feature_overview_cli
+    elif [ "${ARGUMENT_VERSION}" = '1' ]; then
+        serverbot_version
+    elif [ "${ARGUMENT_HELP}" = '1' ]; then
+        serverbot_help
+    # the overview is shown when no arguments were given
+    else
+        feature_overview_cli
+    fi
+}
+
+####################################################################################################
+# CALL MAIN FUNCTIONS
+####################################################################################################
+
+serverbot_main
