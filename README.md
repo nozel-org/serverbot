@@ -1,17 +1,13 @@
 # Serverbot
-`serverbot` is a simple and small (<50 kilobytes/<1000 LOC) server monitoring tool that is both easy to use and easy to extend. We found most monitoring software to be overkill for our needs and made a simplistic and lightweight alternative. It's well commented and can be easily extended or hacked to provide more features.
-
-This started as a full rewrite of [`serverbot` for Linux](https://github.com/nozel-org/serverbot), but then specifically tailored to FreeBSD and POSIX shell. It will have more functionality than its Linux counterpart.
+`serverbot` is a simplistic, lightweight and small (<50 kilobytes/<1000 LOC) server monitoring tool made for FreeBSD.
 
 ## Features
 * Easy to use CLI interface with clear help text.
-* Show basic server information.
-* Show server uptime information.
-* Show CPU load metrics.
-* Show basic or extended memory metrics.
-* Show basic disk usage metrics.
-* Show summary with most important metrics.
-* Show overview with all metrics and information.
+* Metrics like cpu, memory and disk usage.
+* Server information like hostname and uptime.
+* Overviews with combined metrics and server information.
+* Alert function that reports when thresholds have been reached.
+* Output to CLI and Telegram are supported.
 
 Some examples:
 ```
@@ -54,6 +50,8 @@ Usage:
 
 Features:
  --server               Basic server information
+ --summary              Server overview
+ --overview             Extended server overview
  --uptime               Server uptime metrics
  --cpu                  CPU load metrics
  --memory               Basic memory usage metrics
@@ -61,32 +59,43 @@ Features:
  --memorytree-wide      Wide mode extended memory usage metrics
  --disk                 Disk usage metrics
  --network              Interfaces and IP addresses
- --summary              Basic server overview
- --overview             Extended server overview
+ --alert                Alerts when metric thresholds are reached
 
 Methods:
  --cli (default)        Output [feature] to command line
+ --telegram             Output [feature] to Telegram
 
 Options:
+ --cron                 Effectuate cron changes from serverbot config
  --help                 Display this help and exit
  --version              Display version information and exit
 ```
 
 ## How to install
 ### Requirements
-Only FreeBSD is required to run `serverbot`. In the future when `telegram` has been added as a method, `curl` will be required for that functionality as well.
+Only base FreeBSD is required to run `serverbot`. To use the Telegram output method, additionaly `curl` is required.
 
 ### Install
-Copy `freebsd-serverbot` to `/usr/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
+Copy `freebsd-serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
 ```
-# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/freebsd-serverbot -O /usr/bin/serverbot
+# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/freebsd-serverbot -O /usr/local/bin/serverbot
 # chown root:wheel /usr/bin/serverbot
 # chmod 555 /usr/bin/serverbot
+```
+Optionally you can add serverbot's configuration file for additional options:
+```
+# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
 ```
 
 ## Support
 If you have questions/suggestions about `serverbot` or find bugs, please let us know via the issue tracker.
 
 ## Changelog
-### 1.0.0-STABLE (1[4-02-2021](https://github.com/nozel-org/freebsd-serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
+### 1.1.0-RELEASE (23-04-2022)
+- Changed STABLE tag to RELEASE tag.
+- Added serverbot.conf for additional options.
+- Added feature Alert.
+- Added method Telegram.
+
+### 1.0.0-STABLE ([14-02-2021](https://github.com/nozel-org/freebsd-serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
 - First stable release.
