@@ -1,5 +1,5 @@
 # Serverbot
-`serverbot` is a simplistic, lightweight and small (<50 kilobytes/<1000 LOC) server monitoring tool made for FreeBSD.
+`serverbot` is a simplistic, lightweight and small (<1000 LOC) server monitoring tool made for FreeBSD.
 
 ## Features
 * Easy to use CLI interface with clear help text.
@@ -78,7 +78,7 @@ Only base FreeBSD is required to run `serverbot`. To use the Telegram output met
 ### Install
 Copy `freebsd-serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
 ```
-# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/freebsd-serverbot -O /usr/local/bin/serverbot
+# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot -O /usr/local/bin/serverbot
 # chown root:wheel /usr/bin/serverbot
 # chmod 555 /usr/bin/serverbot
 ```
@@ -91,7 +91,7 @@ Optionally you can add serverbot's configuration file for additional options:
 If you have questions/suggestions about `serverbot` or find bugs, please let us know via the issue tracker.
 
 ## Changelog
-### 1.1.0-RELEASE (23-04-2022)
+### 1.1.0-RELEASE ([23-04-2022](https://github.com/nozel-org/freebsd-serverbot/commit/881c318e0aeac671a045b2701ac40d86dd807d49))
 - Changed STABLE tag to RELEASE tag.
 - Added serverbot.conf for additional options.
 - Added feature Alert.
