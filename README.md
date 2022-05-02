@@ -9,39 +9,70 @@
 * Alert function that reports when thresholds have been reached.
 * Output to CLI and Telegram are supported.
 
-Some examples:
+## Installing / Getting started
+Copy `serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
+```
+# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot -O /usr/local/bin/serverbot
+# chown root:wheel /usr/local/bin/serverbot
+# chmod 555 /usr/local/bin/serverbot
+```
+Optionally you can add serverbot's configuration file for additional options:
+```
+# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
+```
+When installed, run `serverbot --overview`.
+
+## Configuration
+General settings and automated tasks can be configured in `/usr/local/etc/serverbot.conf`. Automated tasks can be effectuated with `serverbot --cron`.
+
+## How to use
+`serverbot` has **features**, **methods** and **options**. Options can be used standalone, but a feature always requires a method and vice versa. Some examples:"
+
+```
+# options
+$ serverbot --help                           # Displays help text
+$ serverbot --cron                           # Effectuates automated tasks
+
+# features/methods
+$ uptimebot --overview ---cli                # Shows a extended overview of server metrics on CLI
+$ uptimebot --summary --telegram             # Shows a summary of server metrics on Telegram
+$ uptimebot --alert --cli                    # Shows whether metrics exceed thresholds on CLI
+$ uptimebot --alert --cli                    # Shows whether metrics exceed thresholds on Telegram
+```
+
+#### Some output examples:
 ```
 # serverbot --overview
-hostname       freebsd.development.nozel.org
-os/kernel      FreeBSD 12.1-RELEASE-p13 (amd64)
-uptime         4 hours 30 minutes 11 seconds
+hostname       hostname.domain.tld
+os/kernel      FreeBSD 13.0-RELEASE-p11 (amd64)
+uptime         3 days 7 hours 36 minutes 9 seconds
 
 cpu load       1 min        5 min          15 min
-               0.34 (8%)    0.37 (9%)      0.37 (9%)
+               3.62 (15%)   3.41 (14%)     3.43 (14%)
 
 memory         total        used           free
-               8311 MB      175 MB (2%)    8043 MB (96%)
+               33 GB        8516 MB (25%)  24 GB (74%)
 
 disk usage     total        used           free
-               68 GB        4587 MB (6%)   63 GB (93%)
-
+               1911 GB      3667 MB (0%)   1907 GB (99%)
 ```
 ```
 # serverbot --memorytree
-Total             8311 MB       100%
-|-- Free          8043 MB        96%
-|-- Used           176 MB         2%
-|   |-- Active    3538 KB         0%
-|   `-- Wired      172 MB         2%
-|-- Inactive        92 MB         1%
-|-- Laundry           0 B         0%
+Total               33 GB       100%
+|-- Free           733 MB         2%
+|-- Used          8608 MB        25%
+|   |-- Active    6115 MB        18%
+|   `-- Wired     2492 MB         7%
+|-- Inactive        23 GB        71%
+|-- Laundry       3469 KB         0%
 `-- Cache             0 B         0%
 ```
-
-All features output to the CLI. At a later stage support for Telegram will be added.
-
-## How to use
-Quite easy! Run `serverbot` with a valid (combination of) argument(s):
+```
+# serverbot --alert
+[i] the current server load of 14% does not exceeds the threshold of 95%
+[i] the current memory usage of 25% does not exceeds the threshold of 90%
+[i] the current disk usage of 0% does not exceeds the threshold of 80%
+```
 ```
 # serverbot --help
 Usage:
@@ -71,26 +102,20 @@ Options:
  --version              Display version information and exit
 ```
 
-## How to install
-### Requirements
-Only base FreeBSD is required to run `serverbot`. To use the Telegram output method, additionaly `curl` is required.
-
-### Install
-Copy `freebsd-serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
-```
-# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot -O /usr/local/bin/serverbot
-# chown root:wheel /usr/bin/serverbot
-# chmod 555 /usr/bin/serverbot
-```
-Optionally you can add serverbot's configuration file for additional options:
-```
-# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
-```
+For a full list of features, methods and options run `serverbot --help`.
 
 ## Support
-If you have questions/suggestions about `serverbot` or find bugs, please let us know via the issue tracker.
+If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
 ## Changelog
+### 1.2.0-RELEASE ([02-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/e839a0a4582919ea0a8547618a4097426083b911))
+- Extended serverbot.conf configuration parameter validation.
+- Fixed a bug where unused memory wasn't shown correctly.
+- Added feature uptime to method telegram.
+- Added uptime to feature overview method telegram.
+- Added emoji for feature alert method telegram.
+- Removed ${TELEGRAM_URL} from serverbot.conf.
+
 ### 1.1.0-RELEASE ([23-04-2022](https://github.com/nozel-org/freebsd-serverbot/commit/881c318e0aeac671a045b2701ac40d86dd807d49))
 - Changed STABLE tag to RELEASE tag.
 - Added serverbot.conf for additional options.
