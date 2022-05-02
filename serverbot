@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.1.0-RELEASE (23-04-2022)
+# Version 1.2.0-RELEASE (02-05-2022)
 #############################################################################
 
 #############################################################################
@@ -20,11 +20,25 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.1.0'
+SERVERBOT_VERSION='1.2.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /usr/local/etc/serverbot.conf ]; then
+    # populate all usable variables to have defaults and check validity later on
+    CONFIG_SMT_ENABLE='0'
+    CONFIG_LOAD_INTERVAL='0'
+    THRESHOLD_LOAD='0'
+    THRESHOLD_MEMORY='0'
+    THRESHOLD_DISK='0'
+    SUMMARY_TELEGRAM='0'
+    OVERVIEW_TELEGRAM='0'
+    ALERT_TELEGRAM='0'
+    TELEGRAM_TOKEN='0'
+    TELEGRAM_CHAT='0'
+
+    # and source backupbot.conf
     . /usr/local/etc/serverbot.conf
+
     if [ "${SMT_ENABLE}" = 'yes' ] || [ "${SMT_ENABLE}" = 'YES' ]; then
         CONFIG_SMT_ENABLE='1'
     else
@@ -54,17 +68,37 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     elif [ "${THRESHOLD_DISK}" -ge '0' ] && [ "${THRESHOLD_DISK}" -le '100' ]; then
         CONFIG_THRESHOLD_DISK="${THRESHOLD_DISK}"
     fi
+    if [ "${SUMMARY_TELEGRAM}" = 'yes' ] || [ "${SUMMARY_TELEGRAM}" = 'YES' ]; then
+        SUMMARY_TELEGRAM='1'
+    else
+        SUMMARY_TELEGRAM='0'
+    fi
+    if [ "${OVERVIEW_TELEGRAM}" = 'yes' ] || [ "${OVERVIEW_TELEGRAM}" = 'YES' ]; then
+        OVERVIEW_TELEGRAM='1'
+    else
+        OVERVIEW_TELEGRAM='0'
+    fi
+    if [ "${ALERT_TELEGRAM}" = 'yes' ] || [ "${ALERT_TELEGRAM}" = 'YES' ]; then
+        ALERT_TELEGRAM='1'
+    else
+        ALERT_TELEGRAM='0'
+    fi
+    if [ "${TELEGRAM_TOKEN}" = '0' ] || [ "${TELEGRAM_CHAT}" = '0' ]; then
+        METHOD_TELEGRAM='0'
+    else
+        METHOD_TELEGRAM='1'
+    fi
 else
     SMT_ENABLE='NO'
     LOAD_INTERVAL='15'
-    THRESHOLD_LOAD='90'
+    THRESHOLD_LOAD='95'
     THRESHOLD_MEMORY='90'
-    THRESHOLD_DISK='90'
+    THRESHOLD_DISK='80'
     CONFIG_SMT_ENABLE='0'
     CONFIG_LOAD_INTERVAL='15'
-    CONFIG_THRESHOLD_LOAD='90'
+    CONFIG_THRESHOLD_LOAD='95'
     CONFIG_THRESHOLD_MEMORY='90'
-    CONFIG_THRESHOLD_DISK='90'
+    CONFIG_THRESHOLD_DISK='80'
     SUMMARY_TELEGRAM='NO'
     OVERVIEW_TELEGRAM='NO'
     ALERT_TELEGRAM='NO'
@@ -229,6 +263,13 @@ error_method_not_supported() {
 ####################################################################################################
 # REQUIREMENT FUNCTIONS
 ####################################################################################################
+
+requirement_curl() {
+    # show error when curl cannot be found (which probably means the user has not installed curl)
+    if [ ! "$(command -v curl)" ]; then
+        error_curl_not_installed
+    fi
+}
 
 serverbot_argument_validate() {
     # combine argument categories
@@ -413,6 +454,67 @@ gather_metrics_uptime() {
     UPTIME_MIN="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED-UPTIME_HOUR_ROUNDED)/60))"
     UPTIME_MIN_ROUNDED="$((UPTIME_MIN*60))"
     UPTIME_SEC="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED-UPTIME_HOUR_ROUNDED)-UPTIME_MIN_ROUNDED))"
+
+    # determine single or plural for time units
+    if [ "${UPTIME_DAY}" -ge '1' ]; then
+        if [ "${UPTIME_DAY}" -eq '1' ]; then
+            DAY="${UPTIME_DAY} day"
+        else
+            DAY="${UPTIME_DAY} days"
+        fi
+        if [ "${UPTIME_HOUR}" -eq '1' ]; then
+            HOUR="${UPTIME_HOUR} hour"
+        else
+            HOUR="${UPTIME_HOUR} hours"
+        fi
+        if [ "${UPTIME_MIN}" -eq '1' ]; then
+            MIN="${UPTIME_MIN} minute"
+        else
+            MIN="${UPTIME_MIN} minutes"
+        fi
+        if [ "${UPTIME_SEC}" -eq '1' ]; then
+            SEC="${UPTIME_SEC} second"
+        else
+            SEC="${UPTIME_SEC} seconds"
+        fi
+        UPTIME_MESSAGE="${DAY} ${HOUR} ${MIN} ${SEC}"
+    elif [ "${UPTIME_HOUR}" -ge '1' ]; then
+        if [ "${UPTIME_HOUR}" -eq '1' ]; then
+            HOUR="${UPTIME_HOUR} hour"
+        else
+            HOUR="${UPTIME_HOUR} hours"
+        fi
+        if [ "${UPTIME_MIN}" -eq '1' ]; then
+            MIN="${UPTIME_MIN} minute"
+        else
+            MIN="${UPTIME_MIN} minutes"
+        fi
+        if [ "${UPTIME_SEC}" -eq '1' ]; then
+            SEC="${UPTIME_SEC} second"
+        else
+            SEC="${UPTIME_SEC} seconds"
+        fi
+        UPTIME_MESSAGE="${HOUR} ${MIN} ${SEC}"
+    elif [ "${UPTIME_MIN}" -ge '1' ]; then
+        if [ "${UPTIME_MIN}" -eq '1' ]; then
+            MIN="${UPTIME_MIN} minute"
+        else
+            MIN="${UPTIME_MIN} minutes"
+        fi
+        if [ "${UPTIME_SEC}" -eq '1' ]; then
+            SEC="${UPTIME_SEC} second"
+        else
+            SEC="${UPTIME_SEC} seconds"
+        fi
+        UPTIME_MESSAGE="${MIN} ${SEC}"
+    elif [ "${UPTIME_SEC}" -ge '1' ]; then
+        if [ "${UPTIME_SEC}" -eq '1' ]; then
+            SEC="${UPTIME_SEC} second"
+        else
+            SEC="${UPTIME_SEC} seconds"
+        fi
+        UPTIME_MESSAGE="${SEC}"
+    fi
 }
 
 gather_metrics_cpu() {
@@ -498,9 +600,12 @@ gather_metrics_memory() {
     MEMORY_FREE_B="$((MEMORY_FREE_COUNT * MEMORY_PAGE_SIZE))"
 
     # used memory:   equal to active and wired memory combined
+    # unused memory: equal to inactive and free memory combined
     # total memory:  equal to active, inactive, laundry, wired, cache and free memory combined
     MEMORY_USED_COUNT="$((MEMORY_ACTIVE_COUNT + MEMORY_WIRED_COUNT))"
     MEMORY_USED_B="$((MEMORY_USED_COUNT * MEMORY_PAGE_SIZE))"
+    MEMORY_UNUSED_COUNT="$((MEMORY_INACTIVE_COUNT + MEMORY_FREE_COUNT))"
+    MEMORY_UNUSED_B="$((MEMORY_UNUSED_COUNT * MEMORY_PAGE_SIZE))"
     MEMORY_TOTAL_COUNT="$((MEMORY_ACTIVE_COUNT + MEMORY_INACTIVE_COUNT + MEMORY_LAUNDRY_COUNT + MEMORY_WIRED_COUNT + MEMORY_CACHE_COUNT + MEMORY_FREE_COUNT))"
     MEMORY_TOTAL_B="$((MEMORY_TOTAL_COUNT * MEMORY_PAGE_SIZE))"
 
@@ -512,6 +617,7 @@ gather_metrics_memory() {
     MEMORY_CACHE_PERCENTAGE="$((100 * MEMORY_CACHE_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_FREE_PERCENTAGE="$((100 * MEMORY_FREE_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_USED_PERCENTAGE="$((100 * MEMORY_USED_COUNT / MEMORY_TOTAL_COUNT))"
+    MEMORY_UNUSED_PERCENTAGE="$((100 * MEMORY_UNUSED_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_TOTAL_PERCENTAGE='100'
 
     # halve percentages for more flexible reporting purposes
@@ -550,6 +656,8 @@ gather_metrics_memory() {
     MEMORY_FREE_VIEW="${MEMORY_VIEW}"
     convert_bytes_to_human_readable_memory ${MEMORY_USED_B}
     MEMORY_USED_VIEW="${MEMORY_VIEW}"
+    convert_bytes_to_human_readable_memory ${MEMORY_UNUSED_B}
+    MEMORY_UNUSED_VIEW="${MEMORY_VIEW}"
     convert_bytes_to_human_readable_memory ${MEMORY_TOTAL_B}
     MEMORY_TOTAL_VIEW="${MEMORY_VIEW}"
 
@@ -661,12 +769,13 @@ feature_overview_cli() {
 feature_overview_telegram() {
     # gather required metrics
     gather_metrics_server
+    gather_metrics_uptime
     gather_metrics_cpu
     gather_metrics_memory
     gather_metrics_disk
 
     # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>os/kernel</b>:                    <code>${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})</code>\\n<b>cpu load:</b>                     <code>${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%%) ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%%) ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%%)</code>\\n<b>memory:</b>                     <code>${MEMORY_USED_VIEW} (${MEMORY_USED_PERCENTAGE}%%) / ${MEMORY_TOTAL_VIEW}</code>\\n<b>disk:</b>                              <code>${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%%) / ${ROOT_PARTITION_SIZE_VIEW}</code>")"
+    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>os/kernel</b>:                    <code>${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})</code>\\n<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>uptime:</b>                        <code>${UPTIME_MESSAGE}</code>\\n<b>cpu load:</b>                     <code>${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%%) ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%%) ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%%)</code>\\n<b>memory:</b>                     <code>${MEMORY_USED_VIEW} (${MEMORY_USED_PERCENTAGE}%%) / ${MEMORY_TOTAL_VIEW}</code>\\n<b>disk:</b>                              <code>${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%%) / ${ROOT_PARTITION_SIZE_VIEW}</code>")"
 
     # call method_telegram
     method_telegram
@@ -680,71 +789,16 @@ feature_metrics_uptime_cli() {
     gather_metrics_uptime
 
     # output
-    if [ "${UPTIME_DAY}" -ge '1' ]; then
-        if [ "${UPTIME_DAY}" -eq '1' ]; then
-            printf "%s" "${UPTIME_DAY} day "
-        else
-            printf "%s" "${UPTIME_DAY} days "
-        fi
-        if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            printf "%s" "${UPTIME_HOUR} hour "
-        else
-            printf "%s" "${UPTIME_HOUR} hours "
-        fi
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "%s" "${UPTIME_MIN} minute "
-        else
-            printf "%s" "${UPTIME_MIN} minutes "
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "%s\n" "${UPTIME_SEC} second"
-        else
-            printf "%s\n" "${UPTIME_SEC} seconds"
-        fi
-    elif [ "${UPTIME_HOUR}" -ge '1' ]; then
-        if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            printf "%s" "${UPTIME_HOUR} hour "
-        else
-            printf "%s" "${UPTIME_HOUR} hours "
-        fi
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "%s" "${UPTIME_MIN} minute "
-        else
-            printf "%s" "${UPTIME_MIN} minutes "
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "%s\n" "${UPTIME_SEC} second"
-        else
-            printf "%s\n" "${UPTIME_SEC} seconds"
-        fi
-    elif [ "${UPTIME_MIN}" -ge '1' ]; then
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            printf "%s" "${UPTIME_MIN} minute "
-        else
-            printf "%s" "${UPTIME_MIN} minutes "
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "%s\n" "${UPTIME_SEC} second"
-        else
-            printf "%s\n" "${UPTIME_SEC} seconds"
-        fi
-    elif [ "${UPTIME_SEC}" -ge '1' ]; then
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            printf "%s\n" "${UPTIME_SEC} second"
-        else
-            printf "%s\n" "${UPTIME_SEC} seconds"
-        fi
-    fi
+    printf "%s\n" "${UPTIME_MESSAGE}"
 }
 
 feature_metrics_uptime_telegram() {
-    error_method_not_supported
-
     # gather required metrics
+    gather_metrics_server
     gather_metrics_uptime
 
     # create message for telegram
-    TELEGRAM_MESSAGE=""
+    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>uptime:</b>                        <code>${UPTIME_MESSAGE}</code>")"
 
     # call method_telegram
     method_telegram
@@ -783,8 +837,8 @@ feature_metrics_memory_cli() {
     gather_metrics_memory
 
     # output
-    printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "free"
-    printf "%-14s %-12s %-14s %-14s\n" "" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_VIEW} (${MEMORY_USED_PERCENTAGE}%)" "${MEMORY_FREE_VIEW} (${MEMORY_FREE_PERCENTAGE}%)"
+    printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
+    printf "%-14s %-12s %-14s %-14s\n" "" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_VIEW} (${MEMORY_USED_PERCENTAGE}%)" "${MEMORY_UNUSED_VIEW} (${MEMORY_UNUSED_PERCENTAGE}%)"
 }
 
 feature_metrics_memory_telegram() {
@@ -958,21 +1012,21 @@ feature_metrics_alert_telegram() {
     # output
     if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
         # create message for telegram
-        TELEGRAM_MESSAGE="$(printf "<b>ALERT!</b> on <code>${HOSTNAME}</code>\\nCurrent server load (${CPU_LOAD_PERCENTAGE_15MIN}%%) exceeds the threshold (${CONFIG_THRESHOLD_LOAD}%%).")"
+        TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent server load (${CPU_LOAD_PERCENTAGE_15MIN}%) exceeds the threshold (${CONFIG_THRESHOLD_LOAD}%).")"
 
         # call method_telegram
         method_telegram
     fi
     if [ "${MEMORY_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
         # create message for telegram
-        TELEGRAM_MESSAGE="$(printf "<b>ALERT!</b> on <code>${HOSTNAME}</code>\\nCurrent memory usage (${MEMORY_USED_PERCENTAGE}%%) exceeds the threshold (${CONFIG_THRESHOLD_MEMORY}%%).")"
+        TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent memory usage (${MEMORY_USED_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_MEMORY}%).")"
 
         # call method_telegram
         method_telegram
     fi
     if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
         # create message for telegram
-        TELEGRAM_MESSAGE="$(printf "<b>ALERT!</b> on <code>${HOSTNAME}</code>\\nCurrent disk usage (${ROOT_PARTITION_USED_PERCENTAGE}%%) exceeds the threshold (${CONFIG_THRESHOLD_DISK}%%).")"
+        TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent disk usage (${ROOT_PARTITION_USED_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_DISK}%).")"
 
         # call method_telegram
         method_telegram
@@ -987,11 +1041,19 @@ feature_metrics_alert_telegram() {
 ####################################################################################################
 
 method_telegram() {
-    # create payload for Telegram
-    TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
+    # requires curl
+    requirement_curl
+    if [ "${METHOD_TELEGRAM}" = '1' ]; then
+        TELEGRAM_URL="https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage"
 
-    # sent payload to Telegram API and exit
-    curl --silent --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
+        # create payload for Telegram
+        TELEGRAM_PAYLOAD="chat_id=${TELEGRAM_CHAT}&text=${TELEGRAM_MESSAGE}&parse_mode=HTML&disable_web_page_preview=true"
+
+        # sent payload to Telegram API and exit
+        curl --silent --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
+    else
+        error_telegram_not_configured
+    fi
 }
 
 ####################################################################################################
