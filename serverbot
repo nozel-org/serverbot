@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.2.0-RELEASE (02-05-2022)
+# Version 1.3.0-RELEASE (26-05-2022)
 #############################################################################
 
 #############################################################################
@@ -20,13 +20,14 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.2.0'
+SERVERBOT_VERSION='1.3.0'
 
 # check whether serverbot.conf is available and source it
 if [ -f /usr/local/etc/serverbot.conf ]; then
     # populate all usable variables to have defaults and check validity later on
-    CONFIG_SMT_ENABLE='0'
-    CONFIG_LOAD_INTERVAL='0'
+    SMT_ENABLE='0'
+    LOAD_INTERVAL='0'
+    ZFS_ENABLE='0'
     THRESHOLD_LOAD='0'
     THRESHOLD_MEMORY='0'
     THRESHOLD_DISK='0'
@@ -52,6 +53,11 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
         CONFIG_LOAD_INTERVAL='15'
     else
         CONFIG_LOAD_INTERVAL='15'
+    fi
+    if [ "${ZFS_ENABLE}" = 'yes' ] || [ "${ZFS_ENABLE}" = 'YES' ]; then
+        CONFIG_ZFS_ENABLE='1'
+    else
+        CONFIG_ZFS_ENABLE='0'
     fi
     if [ "${THRESHOLD_LOAD}" -lt '0' ] && [ "${THRESHOLD_LOAD}" -gt '100' ]; then
         CONFIG_THRESHOLD_LOAD='95'
@@ -89,13 +95,9 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
         METHOD_TELEGRAM='1'
     fi
 else
-    SMT_ENABLE='NO'
-    LOAD_INTERVAL='15'
-    THRESHOLD_LOAD='95'
-    THRESHOLD_MEMORY='90'
-    THRESHOLD_DISK='80'
     CONFIG_SMT_ENABLE='0'
     CONFIG_LOAD_INTERVAL='15'
+    CONFIG_ZFS_ENABLE='0'
     CONFIG_THRESHOLD_LOAD='95'
     CONFIG_THRESHOLD_MEMORY='90'
     CONFIG_THRESHOLD_DISK='80'
@@ -669,15 +671,25 @@ gather_metrics_memory() {
 }
 
 gather_metrics_disk() {
-    # this function gathers root partition metrics with help from df. posix mode is used
-    # for compatibility purposes.
-    ROOT_PARTITION_SIZE_512="$(df -P / | sed -n '2 p' | awk '{printf $4}')"
-    ROOT_PARTITION_SIZE_B="$((ROOT_PARTITION_SIZE_512 * 512))"
-    ROOT_PARTITION_USED_512="$(df -P / | sed -n '2 p' | awk '{printf $3}')"
-    ROOT_PARTITION_USED_B="$((ROOT_PARTITION_USED_512 * 512))"
-    ROOT_PARTITION_USED_PERCENTAGE="$((100 * ROOT_PARTITION_USED_512 / ROOT_PARTITION_SIZE_512))"
-    ROOT_PARTITION_FREE_B="$((ROOT_PARTITION_SIZE_B - ROOT_PARTITION_USED_B))"
-    ROOT_PARTITION_FREE_PERCENTAGE="$((100 * ROOT_PARTITION_FREE_B / ROOT_PARTITION_SIZE_B))"
+    # df gives a misleading view on zfs pools, so zfs is configurable in serverbot.conf
+    if [ "${CONFIG_ZFS_ENABLE}" = '1' ]; then
+        # this function gathers root partition metrics with help from zpool
+        ROOT_PARTITION_SIZE_B="$(zpool list -H -p -o size)"
+        ROOT_PARTITION_USED_B="$(zpool list -H -p -o alloc)"
+        ROOT_PARTITION_FREE_B="$(zpool list -H -p -o free)"
+        ROOT_PARTITION_USED_PERCENTAGE="$((100 * ROOT_PARTITION_USED_B / ROOT_PARTITION_SIZE_B))"
+        ROOT_PARTITION_FREE_PERCENTAGE="$((100 * ROOT_PARTITION_FREE_B / ROOT_PARTITION_SIZE_B))"
+    else
+        # this function gathers root partition metrics with help from df. posix mode is used
+        # for compatibility purposes
+        ROOT_PARTITION_SIZE_512="$(df -P / | sed -n '2 p' | awk '{printf $4}')"
+        ROOT_PARTITION_SIZE_B="$((ROOT_PARTITION_SIZE_512 * 512))"
+        ROOT_PARTITION_USED_512="$(df -P / | sed -n '2 p' | awk '{printf $3}')"
+        ROOT_PARTITION_USED_B="$((ROOT_PARTITION_USED_512 * 512))"
+        ROOT_PARTITION_USED_PERCENTAGE="$((100 * ROOT_PARTITION_USED_512 / ROOT_PARTITION_SIZE_512))"
+        ROOT_PARTITION_FREE_B="$((ROOT_PARTITION_SIZE_B - ROOT_PARTITION_USED_B))"
+        ROOT_PARTITION_FREE_PERCENTAGE="$((100 * ROOT_PARTITION_FREE_B / ROOT_PARTITION_SIZE_B))"
+    fi
 
     # only a few among us like reading amounts of memory in bytes, that's why human readable
     # unit of measures will be determined for reporting purposes
