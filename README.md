@@ -108,7 +108,10 @@ For a full list of features, methods and options run `serverbot --help`.
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
 ## Changelog
-### 1.3.0-RELEASE ([26-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/e839a0a4582919ea0a8547618a4097426083b911))
+### 1.3.1-RELEASE ([26-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/6cf4d6ec3051b7912c82adc025366ff3f56207ba))
+- Fixed a bug in option cron.
+
+### 1.3.0-RELEASE ([26-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/64fbec6c31a98963ce64e04c63b6678c6f002739))
 - Added ZFS file system compatibility.
 - Fixed a bug where SMT_ENABLE in serverbot.conf wouldn't work properly.
 
