@@ -108,6 +108,12 @@ For a full list of features, methods and options run `serverbot --help`.
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
 ## Changelog
+### 1.4.0-RELEASE ([27-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/e007966a2949659d0f223da4ecfb2de7ad2191cd))
+- Fixed a bug where hostname was shown twice in feature overview method telegram.
+- Zfs arc cache size has been subtracted from memory and alert features.
+- Feature memorytree-wide has been removed.
+- Wired memory has been broken down to arc and kernel in feature memorytree.
+
 ### 1.3.1-RELEASE ([26-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/6cf4d6ec3051b7912c82adc025366ff3f56207ba))
 - Fixed a bug in option cron.
 
