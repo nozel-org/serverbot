@@ -11,22 +11,6 @@
 * Alert function that reports when thresholds have been reached.
 * Output to CLI and Telegram are supported.
 
-## Installing / Getting started
-Copy `serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
-```
-# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot -O /usr/local/bin/serverbot
-# chown root:wheel /usr/local/bin/serverbot
-# chmod 555 /usr/local/bin/serverbot
-```
-Optionally you can add serverbot's configuration file for additional features:
-```
-# wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
-```
-When installed, run `serverbot --overview`.
-
-## Configuration
-General settings and automated tasks can be configured in `/usr/local/etc/serverbot.conf`. Automated tasks can be effectuated with `serverbot --cron`.
-
 ## How to use
 `serverbot` has **features**, **methods** and **options**. Options can be used standalone, but a feature always requires a method and vice versa. Some examples:
 
@@ -70,6 +54,23 @@ Options:
   --help                     Display this help and exit
   --version                  Display version information and exit
 ```
+
+## Installing / Getting started
+Copy `serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
+```
+wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot -O /usr/local/bin/serverbot
+chown root:wheel /usr/local/bin/serverbot
+chmod 555 /usr/local/bin/serverbot
+```
+Optionally you can add serverbot's configuration file for additional features:
+```
+wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
+chown root:wheel /usr/local/etc/serverbot.conf
+chmod 555 /usr/local/etc/serverbot.conf
+```
+
+## Configuration
+General settings and automated tasks can be configured in `/usr/local/etc/serverbot.conf`. Automated tasks can be effectuated with `serverbot --cron`.
 
 ## Support
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
