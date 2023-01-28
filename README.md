@@ -1,6 +1,8 @@
 # Serverbot
 `serverbot` is a simplistic, lightweight and small (<1000 LOC) server monitoring tool made for FreeBSD.
 
+![alt text](https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/resources/banner.jpg)
+
 ## Features
 * Easy to use CLI interface with clear help text.
 * Metrics like cpu, memory and disk usage.
@@ -26,7 +28,7 @@ When installed, run `serverbot --overview`.
 General settings and automated tasks can be configured in `/usr/local/etc/serverbot.conf`. Automated tasks can be effectuated with `serverbot --cron`.
 
 ## How to use
-`serverbot` has **features**, **methods** and **options**. Options can be used standalone, but a feature always requires a method and vice versa. Some examples:"
+`serverbot` has **features**, **methods** and **options**. Options can be used standalone, but a feature always requires a method and vice versa. Some examples:
 
 ```
 # options
@@ -40,74 +42,51 @@ $ serverbot --alert --cli                    # Shows whether metrics exceed thre
 $ serverbot --alert --telegram               # Shows whether metrics exceed thresholds on Telegram
 ```
 
-#### Some output examples:
+For a full list of features, methods and options run `serverbot --help`:
 ```
-# serverbot --overview
-hostname       hostname.domain.tld
-os/kernel      FreeBSD 13.0-RELEASE-p11 (amd64)
-uptime         3 days 7 hours 36 minutes 9 seconds
-
-cpu load       1 min        5 min          15 min
-               3.62 (15%)   3.41 (14%)     3.43 (14%)
-
-memory         total        used           free
-               33 GB        8516 MB (25%)  24 GB (74%)
-
-disk usage     total        used           free
-               1911 GB      3667 MB (0%)   1907 GB (99%)
-```
-```
-# serverbot --memorytree
-Total               33 GB       100%
-|-- Free           733 MB         2%
-|-- Used          8608 MB        25%
-|   |-- Active    6115 MB        18%
-|   `-- Wired     2492 MB         7%
-|-- Inactive        23 GB        71%
-|-- Laundry       3469 KB         0%
-`-- Cache             0 B         0%
-```
-```
-# serverbot --alert
-[i] the current server load of 14% does not exceeds the threshold of 95%
-[i] the current memory usage of 25% does not exceeds the threshold of 90%
-[i] the current disk usage of 0% does not exceeds the threshold of 80%
-```
-```
-# serverbot --help
+$ serverbot --help
 Usage:
- serverbot [feature]... [method]...
- serverbot [option]...
+  serverbot [feature]... [method]...
+  serverbot [option]...
 
 Features:
- --server               Basic server information
- --summary              Server overview
- --overview             Extended server overview
- --uptime               Server uptime metrics
- --cpu                  CPU load metrics
- --memory               Basic memory usage metrics
- --memorytree           Extended memory usage metrics
- --memorytree-wide      Wide mode extended memory usage metrics
- --disk                 Disk usage metrics
- --network              Interfaces and IP addresses
- --alert                Alerts when metric thresholds are reached
+  -s, --server               Basic server information
+  -S, --summary              Server overview
+  -o, --overview             Extended server overview
+  -u, --uptime               Server uptime metrics
+  -C, --cpu                  CPU load metrics
+  -m, --memory               Basic memory usage metrics
+  -M, --memorytree           Extended memory usage metrics
+  -d, --disk                 Disk usage metrics
+  -n, --network              Interfaces and IP addresses
+  -a, --alert                Alerts when metric thresholds are reached
 
 Methods:
- --cli (default)        Output [feature] to command line
- --telegram             Output [feature] to Telegram
+  -c, --cli (default)        Output [feature] to command line
+  -t, --telegram             Output [feature] to Telegram
 
 Options:
- --cron                 Effectuate cron changes from serverbot config
- --help                 Display this help and exit
- --version              Display version information and exit
+  --cron                     Effectuate cron changes from serverbot config
+  --help                     Display this help and exit
+  --version                  Display version information and exit
 ```
-
-For a full list of features, methods and options run `serverbot --help`.
 
 ## Support
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
 ## Changelog
+### 1.5.0-RELEASE ([28-01-2023](https://github.com/nozel-org/freebsd-serverbot/commit/9297b2545c296697b32938eb851bd90d3e5e12ce))
+- Added shorter arguments.
+- Added the direct path of command binaries.
+- Added colors to CLI output for more clarity.
+- Made some comments more clear.
+- Fixed a big in automated cronjob creation for Feature Overview.
+- Added requirement to run as root when creating cronjobs.
+- serverbot now checks whether its run on FreeBSD.
+- Added error message for when curl is missing.
+- Fixed some issues shellcheck found.
+- Alert feature now accepts load thresholds higher than 100%.
+
 ### 1.4.0-RELEASE ([27-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/e007966a2949659d0f223da4ecfb2de7ad2191cd))
 - Fixed a bug where hostname was shown twice in feature overview method telegram.
 - Zfs arc cache size has been subtracted from memory and alert features.
