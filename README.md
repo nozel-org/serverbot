@@ -16,7 +16,7 @@ Copy `serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, per
 # chown root:wheel /usr/local/bin/serverbot
 # chmod 555 /usr/local/bin/serverbot
 ```
-Optionally you can add serverbot's configuration file for additional options:
+Optionally you can add serverbot's configuration file for additional features:
 ```
 # wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
 ```
@@ -34,10 +34,10 @@ $ serverbot --help                           # Displays help text
 $ serverbot --cron                           # Effectuates automated tasks
 
 # features/methods
-$ uptimebot --overview ---cli                # Shows a extended overview of server metrics on CLI
-$ uptimebot --summary --telegram             # Shows a summary of server metrics on Telegram
-$ uptimebot --alert --cli                    # Shows whether metrics exceed thresholds on CLI
-$ uptimebot --alert --cli                    # Shows whether metrics exceed thresholds on Telegram
+$ serverbot --overview ---cli                # Shows a extended overview of server metrics on CLI
+$ serverbot --summary --telegram             # Shows a summary of server metrics on Telegram
+$ serverbot --alert --cli                    # Shows whether metrics exceed thresholds on CLI
+$ serverbot --alert --telegram               # Shows whether metrics exceed thresholds on Telegram
 ```
 
 #### Some output examples:
