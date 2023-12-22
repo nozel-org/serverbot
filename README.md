@@ -1,7 +1,7 @@
 # Serverbot
 `serverbot` is a simplistic, lightweight and small (<1000 LOC) server monitoring tool made for FreeBSD.
 
-![alt text](https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/resources/banner.jpg)
+![alt text](https://raw.githubusercontent.com/nozel-org/serverbot/master/resources/banner.jpg)
 
 ## Features
 * Easy to use CLI interface with clear help text.
@@ -58,13 +58,13 @@ Options:
 ## Installing / Getting started
 Copy `serverbot` to `/usr/local/bin/serverbot` (owner=`root`, group=`wheel`, permissions=`555` (read & execute)). This will look something like:
 ```
-wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot -O /usr/local/bin/serverbot
+wget https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot -O /usr/local/bin/serverbot
 chown root:wheel /usr/local/bin/serverbot
 chmod 555 /usr/local/bin/serverbot
 ```
 Optionally you can add serverbot's configuration file for additional features:
 ```
-wget https://raw.githubusercontent.com/nozel-org/freebsd-serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
+wget https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
 chown root:wheel /usr/local/etc/serverbot.conf
 chmod 555 /usr/local/etc/serverbot.conf
 ```
@@ -76,7 +76,7 @@ General settings and automated tasks can be configured in `/usr/local/etc/server
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
 ## Changelog
-### 1.5.0-RELEASE ([28-01-2023](https://github.com/nozel-org/freebsd-serverbot/commit/9297b2545c296697b32938eb851bd90d3e5e12ce))
+### 1.5.0-RELEASE ([28-01-2023](https://github.com/nozel-org/serverbot/commit/9297b2545c296697b32938eb851bd90d3e5e12ce))
 - Added shorter arguments.
 - Added the direct path of command binaries.
 - Added colors to CLI output for more clarity.
@@ -88,20 +88,20 @@ If you have questions, suggestions or find bugs, please let us know via the issu
 - Fixed some issues shellcheck found.
 - Alert feature now accepts load thresholds higher than 100%.
 
-### 1.4.0-RELEASE ([27-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/e007966a2949659d0f223da4ecfb2de7ad2191cd))
+### 1.4.0-RELEASE ([27-05-2022](https://github.com/nozel-org/serverbot/commit/e007966a2949659d0f223da4ecfb2de7ad2191cd))
 - Fixed a bug where hostname was shown twice in feature overview method telegram.
 - Zfs arc cache size has been subtracted from memory and alert features.
 - Feature memorytree-wide has been removed.
 - Wired memory has been broken down to arc and kernel in feature memorytree.
 
-### 1.3.1-RELEASE ([26-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/6cf4d6ec3051b7912c82adc025366ff3f56207ba))
+### 1.3.1-RELEASE ([26-05-2022](https://github.com/nozel-org/serverbot/commit/6cf4d6ec3051b7912c82adc025366ff3f56207ba))
 - Fixed a bug in option cron.
 
-### 1.3.0-RELEASE ([26-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/64fbec6c31a98963ce64e04c63b6678c6f002739))
+### 1.3.0-RELEASE ([26-05-2022](https://github.com/nozel-org/serverbot/commit/64fbec6c31a98963ce64e04c63b6678c6f002739))
 - Added ZFS file system compatibility.
 - Fixed a bug where SMT_ENABLE in serverbot.conf wouldn't work properly.
 
-### 1.2.0-RELEASE ([02-05-2022](https://github.com/nozel-org/freebsd-serverbot/commit/e839a0a4582919ea0a8547618a4097426083b911))
+### 1.2.0-RELEASE ([02-05-2022](https://github.com/nozel-org/serverbot/commit/e839a0a4582919ea0a8547618a4097426083b911))
 - Extended serverbot.conf configuration parameter validation.
 - Fixed a bug where unused memory wasn't shown correctly.
 - Added feature uptime to method telegram.
@@ -109,11 +109,11 @@ If you have questions, suggestions or find bugs, please let us know via the issu
 - Added emoji for feature alert method telegram.
 - Removed ${TELEGRAM_URL} from serverbot.conf.
 
-### 1.1.0-RELEASE ([23-04-2022](https://github.com/nozel-org/freebsd-serverbot/commit/881c318e0aeac671a045b2701ac40d86dd807d49))
+### 1.1.0-RELEASE ([23-04-2022](https://github.com/nozel-org/serverbot/commit/881c318e0aeac671a045b2701ac40d86dd807d49))
 - Changed STABLE tag to RELEASE tag.
 - Added serverbot.conf for additional options.
 - Added feature Alert.
 - Added method Telegram.
 
-### 1.0.0-STABLE ([14-02-2021](https://github.com/nozel-org/freebsd-serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
+### 1.0.0-STABLE ([14-02-2021](https://github.com/nozel-org/serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
 - First stable release.
