@@ -1,26 +1,41 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.5.0-RELEASE (28-01-2023)
+# Version 1.6.0-RELEASE (22-12-2023)
 #############################################################################
 
 #############################################################################
-# Copyright 2016-2023 Nozel/Sebas Veeke. Licenced under a Creative Commons
-# Attribution-NonCommercial-ShareAlike 4.0 International License.
+# SPDX-License-Identifier: Apache-2.0
 #
-# See https://creativecommons.org/licenses/by-nc-sa/4.0/
+# Copyright 2023 Sebas Veeke. All rights reserved.
 #
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License. 
+#############################################################################
+
+#############################################################################
 # Contact:
-# > e-mail      mail@nozel.org
-# > GitHub      nozel-org
+# > E-mail      mail@nozel.org
+# > Website     https://nozel.org
+# > Codeberg    https://codeberg.org/nozel/bottleneck
 #############################################################################
 
 #############################################################################
-# VARIABLES
+# PROGRAM VARIABLES
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.5.0'
+SERVERBOT_VERSION='1.6.0'
+SERVERBOT_VERSION_DATE='22-12-2023'
 
 # commands
 CURL="$(command -v curl)"
@@ -47,15 +62,28 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     THRESHOLD_LOAD='0'
     THRESHOLD_MEMORY='0'
     THRESHOLD_DISK='0'
+    SUMMARY_LOGGER='0'
     SUMMARY_TELEGRAM='0'
+    OVERVIEW_LOGGER='0'
     OVERVIEW_TELEGRAM='0'
+    ALERT_LOGGER='0'
     ALERT_TELEGRAM='0'
+    BASE_UPDATES_LOGGER='NO'
+    BASE_UPDATES_TELEGRAM='NO'
+    PKG_UPDATES_LOGGER='NO'
+    PKG_UPDATES_TELEGRAM='NO'
+    PKG_AUDIT_LOGGER='NO'
+    PKG_AUDIT_TELEGRAM='NO'
+    PKG_CHECKSUM_LOGGER='NO'
+    PKG_CHECKSUM_TELEGRAM='NO'
     TELEGRAM_TOKEN='0'
     TELEGRAM_CHAT='0'
 
     # and source backupbot.conf
     . /usr/local/etc/serverbot.conf
 
+    # check whether backupbot.conf configuration parameters are used
+    # general settings
     if [ "${SMT_ENABLE}" = 'yes' ] || [ "${SMT_ENABLE}" = 'YES' ]; then
         CONFIG_SMT_ENABLE='1'
     else
@@ -75,6 +103,7 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_ZFS_ENABLE='0'
     fi
+    # alert configuration
     if [ "${THRESHOLD_LOAD}" -lt '0' ]; then
         CONFIG_THRESHOLD_LOAD='95'
     elif [ "${THRESHOLD_LOAD}" -ge '0' ]; then
@@ -90,26 +119,84 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     elif [ "${THRESHOLD_DISK}" -ge '0' ] && [ "${THRESHOLD_DISK}" -le '100' ]; then
         CONFIG_THRESHOLD_DISK="${THRESHOLD_DISK}"
     fi
+    # automated tasks
+    if [ "${SUMMARY_LOGGER}" = 'yes' ] || [ "${SUMMARY_LOGGER}" = 'YES' ]; then
+        CONFIG_SUMMARY_LOGGER='1'
+    else
+        CONFIG_SUMMARY_LOGGER='0'
+    fi
     if [ "${SUMMARY_TELEGRAM}" = 'yes' ] || [ "${SUMMARY_TELEGRAM}" = 'YES' ]; then
         CONFIG_SUMMARY_TELEGRAM='1'
     else
         CONFIG_SUMMARY_TELEGRAM='0'
+    fi
+    if [ "${OVERVIEW_LOGGER}" = 'yes' ] || [ "${OVERVIEW_LOGGER}" = 'YES' ]; then
+        CONFIG_OVERVIEW_LOGGER='1'
+    else
+        CONFIG_OVERVIEW_LOGGER='0'
     fi
     if [ "${OVERVIEW_TELEGRAM}" = 'yes' ] || [ "${OVERVIEW_TELEGRAM}" = 'YES' ]; then
         CONFIG_OVERVIEW_TELEGRAM='1'
     else
         CONFIG_OVERVIEW_TELEGRAM='0'
     fi
+    if [ "${ALERT_LOGGER}" = 'yes' ] || [ "${ALERT_LOGGER}" = 'YES' ]; then
+        CONFIG_ALERT_LOGGER='1'
+    else
+        CONFIG_ALERT_LOGGER='0'
+    fi
     if [ "${ALERT_TELEGRAM}" = 'yes' ] || [ "${ALERT_TELEGRAM}" = 'YES' ]; then
         CONFIG_ALERT_TELEGRAM='1'
     else
         CONFIG_ALERT_TELEGRAM='0'
     fi
+    if [ "${BASE_UPDATES_LOGGER}" = 'yes' ] || [ "${BASE_UPDATES_LOGGER}" = 'YES' ]; then
+        CONFIG_BASEUPDATES_LOGGER='1'
+    else
+        CONFIG_BASEUPDATES_LOGGER='0'
+    fi
+    if [ "${BASE_UPDATES_TELEGRAM}" = 'yes' ] || [ "${BASE_UPDATES_TELEGRAM}" = 'YES' ]; then
+        CONFIG_BASEUPDATES_TELEGRAM='1'
+    else
+        CONFIG_BASEUPDATES_TELEGRAM='0'
+    fi
+    if [ "${PKG_UPDATES_LOGGER}" = 'yes' ] || [ "${PKG_UPDATES_LOGGER}" = 'YES' ]; then
+        CONFIG_PKGUPDATES_LOGGER='1'
+    else
+        CONFIG_PKGUPDATES_LOGGER='0'
+    fi
+    if [ "${PKG_UPDATES_TELEGRAM}" = 'yes' ] || [ "${PKG_UPDATES_TELEGRAM}" = 'YES' ]; then
+        CONFIG_PKGUPDATES_TELEGRAM='1'
+    else
+        CONFIG_PKGUPDATES_TELEGRAM='0'
+    fi
+    if [ "${PKG_AUDIT_LOGGER}" = 'yes' ] || [ "${PKG_AUDIT_LOGGER}" = 'YES' ]; then
+        CONFIG_PKGAUDIT_LOGGER='1'
+    else
+        CONFIG_PKGAUDIT_LOGGER='0'
+    fi
+    if [ "${PKG_AUDIT_TELEGRAM}" = 'yes' ] || [ "${PKG_AUDIT_TELEGRAM}" = 'YES' ]; then
+        CONFIG_PKGAUDIT_TELEGRAM='1'
+    else
+        CONFIG_PKGAUDIT_TELEGRAM='0'
+    fi
+    if [ "${PKG_CHECKSUM_LOGGER}" = 'yes' ] || [ "${PKG_CHECKSUM_LOGGER}" = 'YES' ]; then
+        CONFIG_PKGCHECKSUM_LOGGER='1'
+    else
+        CONFIG_PKGCHECKSUM_LOGGER='0'
+    fi
+    if [ "${PKG_CHECKSUM_TELEGRAM}" = 'yes' ] || [ "${PKG_CHECKSUM_TELEGRAM}" = 'YES' ]; then
+        CONFIG_PKGCHECKSUM_TELEGRAM='1'
+    else
+        CONFIG_PKGCHECKSUM_TELEGRAM='0'
+    fi
+    # telegram configuration
     if [ "${TELEGRAM_TOKEN}" = '0' ] || [ "${TELEGRAM_CHAT}" = '0' ]; then
         METHOD_TELEGRAM='0'
     else
         METHOD_TELEGRAM='1'
     fi
+# use sane defaults when backupbot.conf is not available
 else
     CONFIG_SMT_ENABLE='0'
     CONFIG_LOAD_INTERVAL='15'
@@ -117,9 +204,20 @@ else
     CONFIG_THRESHOLD_LOAD='95'
     CONFIG_THRESHOLD_MEMORY='90'
     CONFIG_THRESHOLD_DISK='80'
+    CONFIG_SUMMARY_LOGGER='0'
     CONFIG_SUMMARY_TELEGRAM='0'
+    CONFIG_OVERVIEW_LOGGER='0'
     CONFIG_OVERVIEW_TELEGRAM='0'
+    CONFIG_ALERT_LOGGER='0'
     CONFIG_ALERT_TELEGRAM='0'
+    CONFIG_BASEUPDATES_LOGGER='0'
+    CONFIG_BASEUPDATES_TELEGRAM='0'
+    CONFIG_PKGUPDATES_LOGGER='0'
+    CONFIG_PKGUPDATES_TELEGRAM='0'
+    CONFIG_PKGAUDIT_LOGGER='0'
+    CONFIG_PKGAUDIT_TELEGRAM='0'
+    CONFIG_PKGCHECKSUM_LOGGER='0'
+    CONFIG_PKGCHECKSUM_TELEGRAM='0'
 fi
 
 ####################################################################################################
@@ -127,20 +225,31 @@ fi
 ####################################################################################################
 
 # populate validation variables with zeros for validation
+# options
 ARGUMENT_OPTION='0'
 ARGUMENT_VERSION='0'
 ARGUMENT_HELP='0'
+ARGUMENT_CRON='0'
+# features
 ARGUMENT_FEATURE='0'
-ARGUMENT_SERVER='0'
+ARGUMENT_BASIC='0'
+ARGUMENT_SUMMARY='0'
+ARGUMENT_OVERVIEW='0'
 ARGUMENT_UPTIME='0'
+ARGUMENT_CPU='0'
 ARGUMENT_MEMORY='0'
 ARGUMENT_MEMORYTREE='0'
 ARGUMENT_DISK='0'
 ARGUMENT_NETWORK='0'
-ARGUMENT_SUMMARY='0'
-ARGUMENT_OVERVIEW='0'
+ARGUMENT_ALERT='0'
+ARGUMENT_BASEUPDATES='0'
+ARGUMENT_PKGUPDATES='0'
+ARGUMENT_PKGAUDIT='0'
+ARGUMENT_PKGCHECKSUM='0'
+# methods
 ARGUMENT_METHOD='0'
 ARGUMENT_CLI='0'
+ARGUMENT_LOGGER='0'
 ARGUMENT_TELEGRAM='0'
 
 # read arguments
@@ -166,13 +275,13 @@ while test -n "$1"; do
             ;;
 
         # features
-        --server|server|-s)
-            ARGUMENT_SERVER='1'
+        --basic|basic|-b)
+            ARGUMENT_BASIC='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --summary|summary|-S)
+        --summary|summary|-s)
             ARGUMENT_SUMMARY='1'
             ARGUMENT_FEATURE='1'
             shift
@@ -184,19 +293,19 @@ while test -n "$1"; do
             shift
             ;;
 
-        --uptime|uptime|-u)
+        --uptime|uptime)
             ARGUMENT_UPTIME='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --cpu|cpu|processor|-C)
+        --cpu|cpu|processor)
             ARGUMENT_CPU='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --memory|memory|ram|-m)
+        --memory|memory|ram)
             ARGUMENT_MEMORY='1'
             ARGUMENT_FEATURE='1'
             shift
@@ -208,13 +317,13 @@ while test -n "$1"; do
             shift
             ;;
 
-        --disk|disk|hdd|ssd|-d)
+        --disk|disk|hdd|ssd)
             ARGUMENT_DISK='1'
             ARGUMENT_FEATURE='1'
             shift
             ;;
 
-        --network|network|-n)
+        --network|network)
             ARGUMENT_NETWORK='1'
             ARGUMENT_FEATURE='1'
             shift
@@ -226,9 +335,39 @@ while test -n "$1"; do
             shift
             ;;
 
+        --baseupdates|baseupdates)
+            ARGUMENT_BASEUPDATES='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --pkgupdates|pkgupdates)
+            ARGUMENT_PKGUPDATES='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --pkgaudit|pkgaudit)
+            ARGUMENT_PKGAUDIT='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
+        --pkgchecksum|pkgchecksum)
+            ARGUMENT_PKGCHECKSUM='1'
+            ARGUMENT_FEATURE='1'
+            shift
+            ;;
+
         # methods
         --cli|cli|-c)
             ARGUMENT_CLI='1'
+            ARGUMENT_METHOD='1'
+            shift
+            ;;
+
+        --logger|logger|-l)
+            ARGUMENT_LOGGER='1'
             ARGUMENT_METHOD='1'
             shift
             ;;
@@ -252,37 +391,8 @@ done
 # ERROR FUNCTIONS
 ####################################################################################################
 
-error_no_root_privileges() {
-    printf 'serverbot: error: used argument must be run with root privileges.\n'
-    exit 1
-}
-
-error_os_not_supported() {
-    printf 'serverbot: operating system is not supported.\n'
-    exit 1
-}
-
-error_curl_not_installed() {
-    printf 'serverbot: curl is not installed.\n'
-    exit 1
-}
-
-error_invalid_argument() {
-    printf "serverbot: invalid argument used.\nUse 'serverbot --help' for a list of valid arguments.\n"
-    exit 1
-}
-error_more_than_one_feature() {
-    printf "serverbot: only one serverbot feature can be used at a time.\nUse 'serverbot --help' for a list of valid arguments.\n"
-    exit 1
-}
-
-error_more_than_one_method() {
-    printf "serverbot: only one serverbot method can be used at a time.\nUse 'serverbot --help' for a list of valid arguments.\n"
-    exit 1
-}
-
-error_method_not_supported() {
-    printf "serverbot: the chosen method isn't supported for the chosen feature.\n"
+program_error() {
+    printf "serverbot: error: %s %s %s\n" "${1}" "${2}" "${3}"
     exit 1
 }
 
@@ -293,37 +403,44 @@ error_method_not_supported() {
 requirement_root() {
     # show error when updatebot isn't run with root privileges
     if [ "$(id -u)" -ne '0' ]; then
-        error_no_root_privileges
+        program_error 'this feature must be run with root privileges'
     fi
 }
 
 requirement_os() {
     # show error when freebsd-version cannot be found
     if [ ! "$(command -v freebsd-version)" ]; then
-        error_os_not_supported
+        program_error 'operating system is not supported'
     fi
 }
 
 requirement_curl() {
     # show error when curl cannot be found (which probably means the user has not installed curl)
     if [ ! "$(command -v curl)" ]; then
-        error_curl_not_installed
+        program_error 'curl is not installed'
     fi
 }
 
 serverbot_argument_validate() {
     # combine argument categories
-    ARGUMENT_FEATURES_COMBINED="$((ARGUMENT_SERVER + ARGUMENT_SUMMARY + ARGUMENT_OVERVIEW + ARGUMENT_UPTIME + ARGUMENT_CPU + ARGUMENT_MEMORY + ARGUMENT_MEMORYTREE + ARGUMENT_DISK + ARGUMENT_NETWORK + ARGUMENT_ALERT))"
-    ARGUMENT_METHOD_COMBINED="$((ARGUMENT_CLI + ARGUMENT_TELEGRAM))"
-
+    ARGUMENT_OPTIONS_COMBINED="$((ARGUMENT_VERSION + ARGUMENT_HELP + ARGUMENT_CRON))"
+    ARGUMENT_FEATURES_COMBINED="$((ARGUMENT_BASIC + ARGUMENT_SUMMARY + ARGUMENT_OVERVIEW + ARGUMENT_UPTIME + ARGUMENT_CPU + ARGUMENT_MEMORY + ARGUMENT_MEMORYTREE + ARGUMENT_DISK + ARGUMENT_NETWORK + ARGUMENT_ALERT + ARGUMENT_BASEUPDATES + ARGUMENT_PKGUPDATES + ARGUMENT_PKGAUDIT + ARGUMENT_PKGCHECKSUM))"
+    ARGUMENT_METHODS_COMBINED="$((ARGUMENT_CLI + ARGUMENT_LOGGER + ARGUMENT_TELEGRAM))"
+    
     if [ "${ARGUMENT_NONE}" = '1' ]; then
-        error_invalid_argument
-    # validate amount of selected features and return error when more than 1 feature is selected
+        program_error 'invalid argument used'
+    # validate amount of selected options and return error when more than 1 option is used
+    elif [ "${ARGUMENT_OPTIONS_COMBINED}" -gt '1' ]; then
+        program_error 'only one serverbot option can be used at a time'
+    # validate amount of selected features and return error when more than 1 feature is used
     elif [ "${ARGUMENT_FEATURES_COMBINED}" -gt '1' ]; then
-        error_more_than_one_feature
-    # validate amount of selected methods and return error when more than 1 feature is selected
-    elif [ "${ARGUMENT_METHOD_COMBINED}" -gt '1' ]; then
-        error_more_than_one_method
+        program_error 'only one serverbot feature can be used at a time'
+    elif [ "${ARGUMENT_OPTIONS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_FEATURES_COMBINED}" -ge '1' ]; then
+        program_error 'options and features cannot be used at the same time'
+    elif [ "${ARGUMENT_OPTIONS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ]; then
+        program_error 'options and methods cannot be used at the same time'
+    elif [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_FEATURE}" = '0' ]; then
+        program_error 'a feature must be used when a method is used'
     fi
 }
 
@@ -332,71 +449,144 @@ serverbot_argument_validate() {
 ####################################################################################################
 
 option_version() {
-    printf "%bServerbot %s %b\n" "${BOLD}" "${SERVERBOT_VERSION}" "${NC}"
-    printf "%bCopyright (C) 2016-2023 Nozel.%b\n" "${BOLD}" "${NC}"
-    printf "%bLicense CC Attribution-NonCommercial-ShareAlike 4.0 Int.%b\n\n" "${BOLD}" "${NC}"
-    printf "%bWritten by Sebas Veeke%b\n" "${BOLD}" "${NC}"
-
-    # exit when done
+    printf "Serverbot %s (%s)\n" "${SERVERBOT_VERSION}" "${SERVERBOT_VERSION_DATE}"
+    printf "Copyright (C) 2016-2023 S. Veeke. All rights reserved.\n"
+    printf "SPDX-License-Identifier: Apache-2.0.\n"
     exit 0
 }
 
 option_help() {
     printf "%bUsage:%b\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [feature]... [method]...%b\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [option]...%b\n\n" "${BOLD}" "${NC}"
+    printf "%b  serverbot [feature] [method]%b\n" "${BOLD}" "${NC}"
+    printf "%b  serverbot [option]%b\n\n" "${BOLD}" "${NC}"
     printf "%bFeatures:%b\n" "${BOLD}" "${NC}"
-    printf "  -s, --server               Basic server information\n"
-    printf "  -S, --summary              Server overview\n"
+    printf "  -b, --basic                Basic server information\n"
+    printf "  -s, --summary              Server metrics overview\n"
     printf "  -o, --overview             Extended server overview\n"
-    printf "  -u, --uptime               Server uptime metrics\n"
-    printf "  -C, --cpu                  CPU load metrics\n"
-    printf "  -m, --memory               Basic memory usage metrics\n"
+    printf "      --uptime               Server uptime metrics\n"
+    printf "      --cpu                  CPU load metrics\n"
+    printf "      --memory               Basic memory usage metrics\n"
     printf "  -M, --memorytree           Extended memory usage metrics\n"
-    printf "  -d, --disk                 Disk usage metrics\n"
-    printf "  -n, --network              Interfaces and IP addresses\n"
-    printf "  -a, --alert                Alerts when metric thresholds are reached\n\n"
+    printf "      --disk                 Disk usage metrics\n"
+    printf "      --network              Interfaces and IP addresses\n"
+    printf "  -a, --alert                Reports whether metric thresholds are reached\n"
+    printf "      --baseupdates          Reports about available base system updates\n"
+    printf "      --pkgupdates           Reports about available package updates\n"
+    printf "      --pkgaudit             Reports about known package vulnerabilities\n"
+    printf "      --pkgchecksum          Reports about mismatching package checksums\n"
     printf "%bMethods:%b\n" "${BOLD}" "${NC}"
     printf "  -c, --cli (default)        Output [feature] to command line\n"
+    printf "  -l, --logger               Output [feature] to logger\n"
     printf "  -t, --telegram             Output [feature] to Telegram\n\n"
     printf "%bOptions:%b\n" "${BOLD}" "${NC}"
     printf "  --cron                     Effectuate cron changes from serverbot config\n"
     printf "  --help                     Display this help and exit\n"
     printf "  --version                  Display version information and exit\n"
-
-    # exit when done
     exit 0
 }
 
 option_cron() {
     requirement_root
 
-    printf "%b[1] Removing old serverbot cronjob%b\n" "${BOLD}" "${NC}"
-    rm -f /etc/cron.d/serverbot
-    if [ "${CONFIG_SUMMARY_TELEGRAM}" = '0' ] && [ "${CONFIG_OVERVIEW_TELEGRAM}" = '0' ] && [ "${CONFIG_ALERT_TELEGRAM}" = '0' ]; then
-        printf "%b[2] No automated tasks to add.%b\n\n" "${BOLD}" "${NC}"
-        printf "%bAll done!%b\n" "${BOLD}" "${NC}"
+    printf "[1] Removing old serverbot cronjob\n"
+    if [ -f //etc/cron.d/serverbot ]; then
+        rm -f /etc/cron.d/serverbot
+        printf " >  Done\n"
     else
-        printf "%b[2] Adding configured automated tasks for:%b\n" "${BOLD}" "${NC}"
-        printf "# This cronjob manages automated serverbot features\n" > /etc/cron.d/serverbot
-        if [ "${CONFIG_SUMMARY_TELEGRAM}" = '1' ]; then
-            printf "    - Summary Feature on cron schedule %s\n" "${SUMMARY_CRON}"
-            printf "${SUMMARY_CRON} root /usr/local/bin/serverbot --summary --telegram\n" >> /etc/cron.d/serverbot
-        fi
-        if [ "${CONFIG_OVERVIEW_TELEGRAM}" = '1' ]; then
-            printf "    - Overview Feature on cron schedule %s\n" "${OVERVIEW_CRON}"
-            printf "${OVERVIEW_CRON} root /usr/local/bin/serverbot --overview --telegram\n" >> /etc/cron.d/serverbot
-        fi
-        if [ "${CONFIG_ALERT_TELEGRAM}" = '1' ]; then
-            printf "    - Alert Feature on cron schedule %s\n" "${ALERT_CRON}"
-            printf "${ALERT_CRON} root /usr/local/bin/serverbot --alert --telegram\n" >> /etc/cron.d/serverbot
-        fi
-        printf "%b[3] Changing cronjob owner and group to root:wheel%b\n" "${BOLD}" "${NC}"
-        chown root:wheel /etc/cron.d/serverbot
-        printf "\n%bAll done! Your new schedule can be found in /etc/cron.d/serverbot.%b\n" "${BOLD}" "${NC}"
+        printf "    Cronjob not found, skipping removal"
     fi
+    
+    AUTOMATED_TASKS_COMBINED="$((CONFIG_SUMMARY_LOGGER + CONFIG_SUMMARY_TELEGRAM + CONFIG_OVERVIEW_LOGGER + CONFIG_OVERVIEW_TELEGRAM + CONFIG_ALERT_LOGGER + CONFIG_ALERT_TELEGRAM + CONFIG_BASEUPDATES_LOGGER + CONFIG_BASEUPDATES_TELEGRAM + CONFIG_PKGUPDATES_LOGGER + CONFIG_PKGUPDATES_TELEGRAM + CONFIG_PKGAUDIT_LOGGER + CONFIG_PKGAUDIT_TELEGRAM + CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGCHECKSUM_TELEGRAM))"
+    AUTOMATED_SUMMARY_TASKS_COMBINED="$((CONFIG_SUMMARY_LOGGER + CONFIG_SUMMARY_TELEGRAM))"
+    AUTOMATED_OVERVIEW_TASKS_COMBINED="$((CONFIG_OVERVIEW_LOGGER + CONFIG_OVERVIEW_TELEGRAM))"
+    AUTOMATED_ALERT_TASKS_COMBINED="$((CONFIG_ALERT_LOGGER + CONFIG_ALERT_TELEGRAM))"
+    AUTOMATED_BASEUPDATES_TASKS_COMBINED="$((CONFIG_BASEUPDATES_LOGGER + CONFIG_BASEUPDATES_TELEGRAM))"
+    AUTOMATED_PKGUPDATES_TASKS_COMBINED="$((CONFIG_PKGUPDATES_LOGGER + CONFIG_PKGUPDATES_TELEGRAM))"
+    AUTOMATED_PKGAUDIT_TASKS_COMBINED="$((CONFIG_PKGAUDIT_LOGGER + CONFIG_PKGAUDIT_TELEGRAM))"
+    AUTOMATED_PKGCHECKSUM_TASKS_COMBINED="$((CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGCHECKSUM_TELEGRAM))"
 
-    # exit when done
+    if [ "${AUTOMATED_TASKS_COMBINED}" -eq '0' ]; then
+        printf "[2] No automated tasks to add\n"
+        printf " >  All done!\n"
+    else
+        printf "[2] Adding configured automated tasks for:\n"
+        printf "# This cronjob manages automated serverbot features\n" > /etc/cron.d/serverbot
+        if [ "${AUTOMATED_SUMMARY_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Summary feature on cron schedule %s\n" "${SUMMARY_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --summary " "${SUMMARY_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_SUMMARY_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_SUMMARY_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        if [ "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Overview feature on cron schedule %s\n" "${OVERVIEW_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --overview " "${OVERVIEW_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_OVERVIEW_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_OVERVIEW_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        if [ "${AUTOMATED_ALERT_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Alert feature on cron schedule %s\n" "${ALERT_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --alert " "${ALERT_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_ALERT_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_ALERT_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        if [ "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Base updates feature on cron schedule %s\n" "${BASE_UPDATES_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --baseupdates " "${BASE_UPDATES_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_BASEUPDATES_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_BASEUPDATES_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        if [ "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Pkg updates feature on cron schedule %s\n" "${PKG_UPDATES_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --pkgupdates " "${PKG_UPDATES_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_PKGUPDATES_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_PKGUPDATES_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        if [ "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Pkg audit feature on cron schedule %s\n" "${PKG_AUDIT_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --pkgaudit " "${PKG_AUDIT_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_PKGAUDIT_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_PKGAUDIT_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        if [ "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" -ge '1' ]; then
+            printf " >  Pkg checksum feature on cron schedule %s\n" "${PKG_CHECKSUM_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --pkgchecksum " "${PKG_CHECKSUM_CRON}" >> /etc/cron.d/serverbot
+            if [ "${CONFIG_PKGCHECKSUM_LOGGER}" -eq '1' ]; then
+                printf "%slogger " "--" >> /etc/cron.d/serverbot
+            fi
+            if [ "${CONFIG_PKGCHECKSUM_TELEGRAM}" -eq '1' ]; then
+                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+            fi
+        fi
+        printf " \n\n" >> /etc/cron.d/serverbot
+        printf "[3] Changing cronjob owner and group to root:wheel\n"
+        chown root:wheel /etc/cron.d/serverbot
+        printf " >  Done\n"
+        printf "\nAll done! The new schedule can be found in /etc/cron.d/serverbot.\n"
+    fi
     exit 0
 }
 
@@ -417,7 +607,7 @@ convert_bytes_to_human_readable_memory() {
     MEMORY_TB_LOW='10000000000000'        # terabytes will be used starting at 10 terabytes
     MEMORY_TB_HIGH='9999999999999999'     # terabytes upper limit is '999.999.999.999.999 bytes
     MEMORY_PB_LOW='10000000000000000'     # petabytes will be used starting at 10 petabytes
-    MEMORY_PB_HIGH=''                     # there is no upper limit for terabytes
+    #MEMORY_PB_HIGH=''                     # there is no upper limit for terabytes
 
     # a decimal multiplier of 1000 is used for the following unit prefixes:
     # B = byte, KB = kilobyte, MB = megabyte, GB = gigabyte, TB = terabyte, PB = petabyte
@@ -451,7 +641,7 @@ convert_bytes_to_human_readable_disk() {
     DISK_TB_LOW='10000000000000'        # terabytes will be used starting at 10 terabytes
     DISK_TB_HIGH='9999999999999999'     # terabytes upper limit is '999.999.999.999.999 bytes
     DISK_PB_LOW='10000000000000000'     # petabytes will be used starting at 10 petabytes
-    DISK_PB_HIGH=''                     # there is no upper limit for terabytes
+    #DISK_PB_HIGH=''                     # there is no upper limit for terabytes
 
     # a decimal multiplier of 1000 is used for the following unit prefixes:
     # B = byte, KB = kilobyte, MB = megabyte, GB = gigabyte, TB = terabyte, PB = petabyte
@@ -476,17 +666,17 @@ convert_bytes_to_human_readable_disk() {
 # GATHER FUNCTIONS
 ####################################################################################################
 
-gather_metrics_server() {
-    FREEBSD_VERSION="$(freebsd-version)"
+gather_information_server() {
+    FREEBSD_INSTALLED_VERSION="$(freebsd-version -k)"
+    FREEBSD_RUNNING_VERSION="$(freebsd-version -r)"
+    FREEBSD_USERLAND_VERSION="$(freebsd-version -u)"
     HOSTNAME="$(uname -n)"
     OPERATING_SYSTEM="$(uname -o)"
-    #KERNEL_NAME="$(uname -s)"
-    #KERNEL_VERSION="$(uname -r)"
     ARCHITECTURE="$(uname -m)"
 }
 
 gather_metrics_uptime() {
-    # the freebsd uptime command is very inflexible so serverbot generates its own uptime metrics from epoch
+    # freebsd's uptime command is inflexible so serverbot generates its own uptime metrics from epoch
     EPOCH_TIME="$(date +%s)"
     EPOCH_UPTIME="$(sysctl kern.boottime | awk '{printf $5}' | tr -d ',')"
     UPTIME_CALC="$((EPOCH_TIME-EPOCH_UPTIME))"
@@ -573,7 +763,7 @@ gather_metrics_cpu() {
         CPU_TOTAL_CORES="$(sysctl -n hw.ncpu)"
     fi
     # create variable with maximum load based on total CPU core count
-    CPU_MAXIMUM_LOAD="${CPU_TOTAL_CORES}.00"
+    #CPU_MAXIMUM_LOAD="${CPU_TOTAL_CORES}.00"
     # making calculations with the load metrics is easier this way
     CPU_MAXIMUM_LOAD_CALC="${CPU_TOTAL_CORES}00"
 
@@ -620,9 +810,9 @@ gather_metrics_memory() {
     # hw.physman:  amount of physical memory (in bytes) minus kernel and pre-loaded modules
     # hw.usermem:  amount of memory (in bytes) which is not wired.
     # hw.realmem: 
-    MEMORY_TOTAL_PHYSICAL_B="$(sysctl -n hw.physmem)"
-    MEMORY_TOTAL_USER_B="$(sysctl -n hw.usermem)"
-    MEMORY_TOTAL_REAL_B="$(sysctl -n hw.realmem)"
+    #MEMORY_TOTAL_PHYSICAL_B="$(sysctl -n hw.physmem)"
+    #MEMORY_TOTAL_USER_B="$(sysctl -n hw.usermem)"
+    #MEMORY_TOTAL_REAL_B="$(sysctl -n hw.realmem)"
 
     # active:    contains active (recently referenced) pages
     # inactive:  contains inactive pages that are aged out of the active queue
@@ -733,278 +923,403 @@ gather_metrics_disk() {
     ROOT_PARTITION_FREE_VIEW="${ROOT_PARTITION_VIEW}"
 }
 
+gather_updates_base() {
+    freebsd-update cron
+    freebsd-update updatesready > /dev/null
+    if [ "${?}" -eq '2' ]; then
+        UPDATES_BASE='0'
+    else
+        UPDATES_BASE='1'
+    fi
+}
+
+gather_updates_pkg() {
+    pkg update --force --quiet
+    UPDATES_PKG="$(pkg version | grep "<" | tr -d "\<")"
+}
+
+gather_audit_pkg() {
+    AUDIT_PKG="$(pkg audit --fetch --quiet)"
+}
+
+gather_checksum_pkg() {
+    CHECKSUM_PKG="$(pkg check --checksums --all --quiet 2>&1)"
+}
+
 ####################################################################################################
 # FEATURE FUNCTIONS
 ####################################################################################################
 
-feature_metrics_server_cli() {
-    gather_metrics_server
+# each feature has its own function and each function contains all available methods
+# multiple methods can be used simultaneously, but only one feature can be used at a time
+# the user is notified when a specific method isn't supported for a specific feature
 
-    # output
-    printf "%b%s%b\n" "${BOLD}" "${HOSTNAME}" "${NC}"
-    printf "%b%s%b\n" "${BOLD}" "${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})" "${NC}"
-}
+feature_basic() {
+    gather_information_server
 
-feature_metrics_server_telegram() {
-    gather_metrics_server
-
-    # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>Hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>os/kernel</b>:                    <code>${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_summary_cli() {
-    gather_metrics_cpu
-    gather_metrics_memory
-    gather_metrics_disk
-
-    # output
-    printf "%-9s %b%9s%b %1s %7s %4s%b%0s%b%0s%0s\n" "load" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "" "" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
-    printf "%-9s %b%9s%b %b%1s%b %b%7s%b %4s%b%0s%b%0s%0s\n" "memory" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "${YELLOW}" "/" "${NC}" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")"
-    printf "%-9s %b%9s%b %b%1s%b %b%7s%b %4s%b%0s%b%0s%0s\n" "disk" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "${YELLOW}" "/" "${NC}" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")"
-}
-
-feature_summary_telegram() {
-    gather_metrics_server
-    gather_metrics_cpu
-    gather_metrics_memory
-    gather_metrics_disk
-
-    # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>cpu load:</b>                     <code>${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%%) ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%%) ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%%)</code>\\n<b>memory:</b>                     <code>${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%%) / ${MEMORY_TOTAL_VIEW}</code>\\n<b>disk:</b>                              <code>${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%%) / ${ROOT_PARTITION_SIZE_VIEW}</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_overview_cli() {
-    gather_metrics_server
-    gather_metrics_uptime
-    gather_metrics_cpu
-    gather_metrics_memory
-    gather_metrics_disk
-
-    # output
-    printf "hostname       %b%s%b\n" "${BOLD}" "${HOSTNAME}" "${NC}"
-    printf "os/kernel      %b%s%b\n" "${BOLD}" "${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})" "${NC}"
-    printf "uptime         "
-    feature_metrics_uptime_cli
-    printf "\n"
-    feature_metrics_cpu_cli
-    printf "\n"
-    feature_metrics_memory_cli
-    printf "\n"
-    feature_metrics_disk_cli
-}
-
-feature_overview_telegram() {
-    gather_metrics_server
-    gather_metrics_uptime
-    gather_metrics_cpu
-    gather_metrics_memory
-    gather_metrics_disk
-
-    # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>os/kernel</b>:                    <code>${OPERATING_SYSTEM} ${FREEBSD_VERSION} (${ARCHITECTURE})</code>\\n<b>uptime:</b>                        <code>${UPTIME_MESSAGE}</code>\\n<b>cpu load:</b>                     <code>${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%%) ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%%) ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%%)</code>\\n<b>memory:</b>                     <code>${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%%) / ${MEMORY_TOTAL_VIEW}</code>\\n<b>disk:</b>                              <code>${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%%) / ${ROOT_PARTITION_SIZE_VIEW}</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_uptime_cli() {
-    gather_metrics_uptime
-
-    # output
-    printf "%b%s%b\n" "${BOLD}" "${UPTIME_MESSAGE}" "${NC}"
-}
-
-feature_metrics_uptime_telegram() {
-    gather_metrics_server
-    gather_metrics_uptime
-
-    # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>uptime:</b>                        <code>${UPTIME_MESSAGE}</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_cpu_cli() {
-    gather_metrics_cpu
-
-    # output
-    printf "%-14s %-12s %-14s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
-    printf "%-14s %b%0s%b %0s%b%0s%b%0s%-4s %b%0s%b %0s%b%0s%b%0s%-6s %b%0s%b %0s%b%0s%b%0s%-4s\n" "" "${BOLD}" "${CPU_LOAD_AVERAGE_1MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_5MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
-}
-
-feature_metrics_cpu_telegram() {
-    gather_metrics_server
-    gather_metrics_cpu
-
-    # create message for telegram
-    # double %% for printf to not interpret it as a argument
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>cpu load:</b>                     <code>${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%%) ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%%) ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%%)</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_memory_cli() {
-    gather_metrics_memory
-
-    # output
-    printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
-    printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-2s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${MEMORY_UNUSED_ARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_UNUSED_ARC_PERCENTAGE}" "${NC}" "%" ")"
-}
-
-feature_metrics_memory_telegram() {
-    gather_metrics_server
-    gather_metrics_memory
-
-    # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>memory:</b>                     <code>${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%%) / ${MEMORY_TOTAL_VIEW}</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_memorytree_cli() {
-    gather_metrics_memory
-
-    # output
-    printf "%-19s %8s %10s\n" "Total" "${MEMORY_TOTAL_VIEW}" "${MEMORY_TOTAL_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "|- Free" "${MEMORY_FREE_VIEW}" "${MEMORY_FREE_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "|- Used" "${MEMORY_USED_VIEW}" "${MEMORY_USED_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "   |- Active" "${MEMORY_ACTIVE_VIEW}" "${MEMORY_ACTIVE_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "   \`- Wired" "${MEMORY_WIRED_VIEW}" "${MEMORY_WIRED_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "      |- Kernel" "${MEMORY_WIRED_KERNEL_VIEW}" "${MEMORY_WIRED_KERNEL_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "      \`- Arc" "${MEMORY_WIRED_ARC_VIEW}" "${MEMORY_WIRED_ARC_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "|- Inactive" "${MEMORY_INACTIVE_VIEW}" "${MEMORY_INACTIVE_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "|- Laundry" "${MEMORY_LAUNDRY_VIEW}" "${MEMORY_LAUNDRY_PERCENTAGE}%"
-    printf "%-19s %8s %10s\n" "\`- Cache" "${MEMORY_CACHE_VIEW}" "${MEMORY_CACHE_PERCENTAGE}%"
-}
-
-feature_metrics_memorytree_telegram() {
-    error_method_not_supported
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_disk_cli() {
-    gather_metrics_disk
-
-    # output
-    printf "%-14s %-12s %-14s %-14s\n" "disk usage" "total" "used" "free"
-    printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-5s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${ROOT_PARTITION_FREE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_FREE_PERCENTAGE}" "${NC}" "%" ")"
-}
-
-feature_metrics_disk_telegram() {
-    gather_metrics_server
-    gather_metrics_disk
-
-    # create message for telegram
-    TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>${HOSTNAME}</code>\\n<b>disk:</b>                              <code>${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%%) / ${ROOT_PARTITION_SIZE_VIEW}</code>")"
-
-    # call method_telegram
-    method_telegram
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_network_cli() {
-    echo 'WIP'
-    # ifconfig <interface> | grep 'inet' | awk -F ' ' '{ print $2 }'
-}
-
-feature_metrics_network_telegram() {
-    echo 'WIP'
-    # ifconfig <interface> | grep 'inet' | awk -F ' ' '{ print $2 }'
-
-    # exit when done
-    exit 0
-}
-
-feature_metrics_alert_cli() {
-    gather_metrics_cpu
-    gather_metrics_memory
-    gather_metrics_disk
-
-    # output
-    if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-        printf "%b[!]%b %bcurrent server load of%b %b%s%b%b%%  exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
-    else
-        printf "%b[i]%b %bcurrent server load of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+    if [ "${ARGUMENT_BASIC}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%b%s%b\n" "${BOLD}" "${HOSTNAME}" "${NC}"
+        printf "%b%s%b\n" "${BOLD}" "${OPERATING_SYSTEM} ${FREEBSD_INSTALLED_VERSION} (${ARCHITECTURE})" "${NC}"
     fi
-    if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
-        printf "%b[!]%b %bcurrent memory usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
-    else
-        printf "%b[i]%b %bcurrent memory usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+    if [ "${ARGUMENT_BASIC}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "${HOSTNAME}"
+        method_logger "${OPERATING_SYSTEM} ${FREEBSD_INSTALLED_VERSION} (${ARCHITECTURE})"
     fi
-    if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
-        printf "%b[!]%b %bcurrent disk usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
-    else
-        printf "%b[i]%b %bcurrent disk usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
-    fi
-}
-
-feature_metrics_alert_telegram() {
-    gather_metrics_server
-    gather_metrics_cpu
-    gather_metrics_memory
-    gather_metrics_disk
-
-    # output
-    if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-        # create message for telegram
-        TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent server load (${CPU_LOAD_PERCENTAGE_15MIN}%) exceeds the threshold (${CONFIG_THRESHOLD_LOAD}%).")"
-
-        # call method_telegram
+    if [ "${ARGUMENT_BASIC}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>Hostname:</b>                  <code>%s</code>\\n<b>os/kernel</b>:                    <code>%s %s (%s)</code>" "${HOSTNAME}" "${OPERATING_SYSTEM}" "${FREEBSD_INSTALLED_VERSION}" "${ARCHITECTURE}")"
         method_telegram
     fi
-    if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
-        # create message for telegram
-        TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent memory usage (${MEMORY_USED_NOARC_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_MEMORY}%).")"
+    exit 0
+}
 
-        # call method_telegram
+feature_summary() {
+    gather_information_server
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+
+    if [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%-9s %b%9s%b %1s %7s %4s%b%0s%b%0s%0s\n" "load" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "" "" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
+        printf "%-9s %b%9s%b %b%1s%b %b%7s%b %4s%b%0s%b%0s%0s\n" "memory" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "${YELLOW}" "/" "${NC}" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")"
+        printf "%-9s %b%9s%b %b%1s%b %b%7s%b %4s%b%0s%b%0s%0s\n" "disk" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "${YELLOW}" "/" "${NC}" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")"
+    fi
+    if [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "load ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
+        method_logger "memory ${MEMORY_USED_NOARC_VIEW} / ${MEMORY_TOTAL_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%)"
+        method_logger "disk ${ROOT_PARTITION_USED_VIEW} / ${ROOT_PARTITION_SIZE_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%)"
+    fi
+    if [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>%s</code>\\n<b>cpu load:</b>                     <code>%s (%s%%) %s (%s%%) %s (%s%%)</code>\\n<b>memory:</b>                     <code>%s (%s%%) / %s</code>\\n<b>disk:</b>                              <code>${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%%) / ${ROOT_PARTITION_SIZE_VIEW}</code>" "${HOSTNAME}" "${CPU_LOAD_AVERAGE_1MIN}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${CPU_LOAD_AVERAGE_5MIN}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${CPU_LOAD_AVERAGE_15MIN}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${MEMORY_USED_NOARC_VIEW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${MEMORY_TOTAL_VIEW}")"
         method_telegram
     fi
-    if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
-        # create message for telegram
-        TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent disk usage (${ROOT_PARTITION_USED_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_DISK}%).")"
+    exit 0
+}
 
-        # call method_telegram
+feature_overview() {
+    gather_information_server
+    gather_metrics_uptime
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+
+    if [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "hostname            %b%s%b\n" "${BOLD}" "${HOSTNAME}" "${NC}"
+        printf "operating system    %b%s%b\n" "${BOLD}" "${OPERATING_SYSTEM} (${ARCHITECTURE})" "${NC}"
+        printf "kernel (installed)  %b%s%b\n" "${BOLD}" "${FREEBSD_INSTALLED_VERSION}" "${NC}"
+        printf "kernel (running)    %b%s%b\n" "${BOLD}" "${FREEBSD_RUNNING_VERSION}" "${NC}"
+        printf "userland version    %b%s%b\n" "${BOLD}" "${FREEBSD_USERLAND_VERSION}" "${NC}"
+        printf "uptime              %b%s%b\n\n" "${BOLD}" "${UPTIME_MESSAGE}" "${NC}"
+        printf "%-14s %-12s %-14s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
+        printf "%-14s %b%0s%b %0s%b%0s%b%0s%-4s %b%0s%b %0s%b%0s%b%0s%-6s %b%0s%b %0s%b%0s%b%0s%-4s\n\n" "" "${BOLD}" "${CPU_LOAD_AVERAGE_1MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_5MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
+        printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
+        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-2s %b%0s%b %0s%b%0s%b%0s%-14s\n\n" "" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${MEMORY_UNUSED_ARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_UNUSED_ARC_PERCENTAGE}" "${NC}" "%" ")"
+        printf "%-14s %-12s %-14s %-14s\n" "disk usage" "total" "used" "free"
+        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-5s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${ROOT_PARTITION_FREE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_FREE_PERCENTAGE}" "${NC}" "%" ")"
+    fi
+    if [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "hostname: ${HOSTNAME}"
+        method_logger "operating system: ${OPERATING_SYSTEM} (${ARCHITECTURE})"
+        method_logger "kernel (installed): ${FREEBSD_INSTALLED_VERSION}"
+        method_logger "kernel (running): ${FREEBSD_RUNNING_VERSION}"
+        method_logger "userland version: ${FREEBSD_USERLAND_VERSION}"
+        method_logger "uptime: ${UPTIME_MESSAGE}"
+        method_logger "cpu load (1/5/15 min): ${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%) / ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%) / ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
+        method_logger "memory (total|used/unused): ${MEMORY_TOTAL_VIEW} | ${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%) / ${MEMORY_UNUSED_ARC_VIEW} (${MEMORY_UNUSED_ARC_PERCENTAGE}%)"
+        method_logger "disk usage (total|used/unused): ${ROOT_PARTITION_SIZE_VIEW} | ${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%) / ${ROOT_PARTITION_FREE_VIEW} (${ROOT_PARTITION_FREE_PERCENTAGE}%)"
+    fi
+    if [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                    <code>%s</code>\\n<b>operating system</b>:     <code>%s (%s)</code>\\n<b>kernel (installed)</b>:      <code>%s</code>\\n<b>kernel (running)</b>:        <code>%s</code>\\n<b>userland version</b>:      <code>%s</code>\\n<b>uptime:</b>                          <code>%s</code>\\n<b>cpu load:</b>                       <code>%s (%s%%) %s (%s%%) %s (%s%%)</code>\\n<b>memory:</b>                       <code>%s (%s%%) / %s</code>\\n<b>disk:</b>                                <code>%s (%s%%) / %s</code>" "${HOSTNAME}" "${OPERATING_SYSTEM}" "${ARCHITECTURE}" "${FREEBSD_INSTALLED_VERSION}" "${FREEBSD_RUNNING_VERSION}" "${FREEBSD_USERLAND_VERSION}" "${UPTIME_MESSAGE}" "${CPU_LOAD_AVERAGE_1MIN}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${CPU_LOAD_AVERAGE_5MIN}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${CPU_LOAD_AVERAGE_15MIN}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${MEMORY_USED_NOARC_VIEW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${MEMORY_TOTAL_VIEW}" "${ROOT_PARTITION_USED_VIEW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${ROOT_PARTITION_SIZE_VIEW}")"
         method_telegram
     fi
+    exit 0
+}
 
-    # exit when done
+feature_uptime() {
+    gather_information_server
+    gather_metrics_uptime
+
+    if [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%b%s%b\n" "${BOLD}" "${UPTIME_MESSAGE}" "${NC}"
+    fi
+    if [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "uptime: ${UPTIME_MESSAGE}"
+    fi
+    if [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>%s</code>\\n<b>uptime:</b>                        <code>%s</code>" "${HOSTNAME}" "${UPTIME_MESSAGE}")"
+        method_telegram
+    fi
+    exit 0
+}
+
+feature_cpu() {
+    gather_information_server
+    gather_metrics_cpu
+
+    if [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%-14s %-12s %-14s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
+        printf "%-14s %b%0s%b %0s%b%0s%b%0s%-4s %b%0s%b %0s%b%0s%b%0s%-6s %b%0s%b %0s%b%0s%b%0s%-4s\n" "" "${BOLD}" "${CPU_LOAD_AVERAGE_1MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_5MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
+    fi
+    if [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "cpu load (1/5/15 min): ${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%) / ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%) / ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
+    fi
+    if [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>%s</code>\\n<b>cpu load:</b>                     <code>%s (%s%%) %s (%s%%) %s (%s%%)</code>" "${HOSTNAME}" "${CPU_LOAD_AVERAGE_1MIN}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${CPU_LOAD_AVERAGE_5MIN}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${CPU_LOAD_AVERAGE_15MIN}" "${CPU_LOAD_PERCENTAGE_15MIN}")"
+        method_telegram
+    fi
+    exit 0
+}
+
+feature_memory() {
+    gather_information_server
+    gather_metrics_memory
+
+    if [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
+        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-2s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${MEMORY_UNUSED_ARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_UNUSED_ARC_PERCENTAGE}" "${NC}" "%" ")"
+    fi
+    if [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "memory (total|used/unused): ${MEMORY_TOTAL_VIEW} | ${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%) / ${MEMORY_UNUSED_ARC_VIEW} (${MEMORY_UNUSED_ARC_PERCENTAGE}%)"
+    fi
+    if [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>%s</code>\\n<b>memory:</b>                     <code>%s (%s%%) / %s</code>" "${HOSTNAME}" "${MEMORY_USED_NOARC_VIEW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${MEMORY_TOTAL_VIEW}")"
+        method_telegram
+    fi
+    exit 0
+}
+
+
+feature_memorytree() {
+    gather_information_server
+    gather_metrics_memory
+
+    if [ "${ARGUMENT_MEMORYTREE}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%-19s %8s %10s\n" "Total" "${MEMORY_TOTAL_VIEW}" "${MEMORY_TOTAL_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "|- Free" "${MEMORY_FREE_VIEW}" "${MEMORY_FREE_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "|- Used" "${MEMORY_USED_VIEW}" "${MEMORY_USED_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "   |- Active" "${MEMORY_ACTIVE_VIEW}" "${MEMORY_ACTIVE_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "   \`- Wired" "${MEMORY_WIRED_VIEW}" "${MEMORY_WIRED_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "      |- Kernel" "${MEMORY_WIRED_KERNEL_VIEW}" "${MEMORY_WIRED_KERNEL_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "      \`- Arc" "${MEMORY_WIRED_ARC_VIEW}" "${MEMORY_WIRED_ARC_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "|- Inactive" "${MEMORY_INACTIVE_VIEW}" "${MEMORY_INACTIVE_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "|- Laundry" "${MEMORY_LAUNDRY_VIEW}" "${MEMORY_LAUNDRY_PERCENTAGE}%"
+        printf "%-19s %8s %10s\n" "\`- Cache" "${MEMORY_CACHE_VIEW}" "${MEMORY_CACHE_PERCENTAGE}%"
+    fi
+    if [ "${ARGUMENT_MEMORYTREE}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger 'the logger method is not supported for feature memorytree'
+    fi
+    if [ "${ARGUMENT_MEMORYTREE}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>            <code>%s</code>\\n<b>error:</b>                      <code>serverbot: memorytree doesn't support telegram</code>" "${HOSTNAME}")"
+        method_telegram
+    fi
+    exit 0
+}
+
+feature_disk() {
+    gather_information_server
+    gather_metrics_disk
+
+    if [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf "%-14s %-12s %-14s %-14s\n" "disk usage" "total" "used" "free"
+        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-5s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${ROOT_PARTITION_FREE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_FREE_PERCENTAGE}" "${NC}" "%" ")"
+    fi
+    if [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger "disk usage (total|used/unused): ${ROOT_PARTITION_SIZE_VIEW} | ${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%) / ${ROOT_PARTITION_FREE_VIEW} (${ROOT_PARTITION_FREE_PERCENTAGE}%)"
+    fi
+    if [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>                  <code>%s</code>\\n<b>disk:</b>                              <code>%s (%s%%) / %s</code>" "${HOSTNAME}" "${ROOT_PARTITION_USED_VIEW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${ROOT_PARTITION_SIZE_VIEW}")"
+        method_telegram
+    fi
+    exit 0
+}
+
+feature_network() {
+    gather_information_server
+
+    if [ "${ARGUMENT_NETWORK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        printf 'serverbot: error: feature network is not implemented\n'
+    fi
+    if [ "${ARGUMENT_NETWORK}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        method_logger 'error: feature network is not implemented'
+    fi
+    if [ "${ARGUMENT_NETWORK}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        TELEGRAM_MESSAGE="$(printf "<b>hostname:</b>            <code>%s</code>\\n<b>error:</b>                      <code>serverbot: feature network not implemented</code>" "${HOSTNAME}")"
+        method_telegram
+    fi
+    exit 0
+}
+
+feature_alert() {
+    gather_information_server
+    gather_metrics_cpu
+    gather_metrics_memory
+    gather_metrics_disk
+
+    if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
+            printf "%b[!]%b %bcurrent server load of%b %b%s%b%b%%  exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+        else
+            printf "%b[i]%b %bcurrent server load of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+        fi
+        if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
+            printf "%b[!]%b %bcurrent memory usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+        else
+            printf "%b[i]%b %bcurrent memory usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+        fi
+        if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
+            printf "%b[!]%b %bcurrent disk usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+        else
+            printf "%b[i]%b %bcurrent disk usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+        fi
+    fi
+    if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
+            method_logger "current server load of ${CPU_LOAD_PERCENTAGE_15MIN} exceeds the threshold of ${CONFIG_THRESHOLD_LOAD}"
+        #else
+        #    method_logger "current server load of ${CPU_LOAD_PERCENTAGE_15MIN} does not exceed the threshold of ${CONFIG_THRESHOLD_LOAD}"
+        fi
+        if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
+            method_logger "current memory usage of ${MEMORY_USED_NOARC_PERCENTAGE} exceeds the threshold of ${CONFIG_THRESHOLD_MEMORY}"
+        #else
+        #    method_logger "current memory usage of ${MEMORY_USED_NOARC_PERCENTAGE} does not exceed the threshold of ${CONFIG_THRESHOLD_MEMORY}"
+        fi
+        if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
+            method_logger "current disk usage of ${ROOT_PARTITION_USED_PERCENTAGE} exceeds the threshold of ${CONFIG_THRESHOLD_DISK}"
+        #else
+        #    method_logger "current disk usage of ${ROOT_PARTITION_USED_PERCENTAGE} does not exceed the threshold of ${CONFIG_THRESHOLD_DISK}"
+        fi
+    fi
+    if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
+            TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent server load (${CPU_LOAD_PERCENTAGE_15MIN}%) exceeds the threshold (${CONFIG_THRESHOLD_LOAD}%).")"
+            method_telegram
+        fi
+        if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
+            TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent memory usage (${MEMORY_USED_NOARC_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_MEMORY}%).")"
+            method_telegram
+        fi
+        if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
+            TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent disk usage (${ROOT_PARTITION_USED_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_DISK}%).")"
+            method_telegram
+        fi
+    fi
+    exit 0
+}
+
+feature_baseupdates() {
+    gather_information_server
+    gather_updates_base
+
+    if [ "${ARGUMENT_BASEUPDATES}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        if [ "${UPDATES_BASE}" = '1' ]; then
+            printf 'There are pending FreeBSD base system updates available.\n'
+        elif [ "${UPDATES_BASE}" = '0' ]; then
+            printf 'There are no pending FreeBSD base system updates available.\n'
+        fi
+    fi
+    if [ "${ARGUMENT_BASEUPDATES}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        if [ "${UPDATES_BASE}" = '1' ]; then
+            method_logger 'There are pending FreeBSD base system updates available.'
+        elif [ "${UPDATES_BASE}" = '0' ]; then
+            method_logger 'there are no pending FreeBSD base system updates available.'
+        fi
+    fi
+    if [ "${ARGUMENT_BASEUPDATES}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        if [ "${UPDATES_BASE}" = '1' ]; then
+            TELEGRAM_MESSAGE="$(printf "<b>There are pending FreeBSD base system updates available on %s.</b>" "${HOSTNAME}")"
+            method_telegram
+        fi
+    fi
+    exit 0
+}
+
+feature_pkgupdates() {
+    gather_information_server
+    gather_updates_pkg
+
+    if [ "${ARGUMENT_PKGUPDATES}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        if [ -z "${UPDATES_PKG}" ]; then
+            printf 'There are no pending package updates available.\n'
+        else
+            printf "The following pending package updates are available:\n%s\n" "${UPDATES_PKG}"
+        fi
+    fi
+    if [ "${ARGUMENT_PKGUPDATES}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        if [ -z "${UPDATES_PKG}" ]; then
+            method_logger 'there are no pending package updates available.'
+        else
+            method_logger "The following pending package updates are available: ${UPDATES_PKG}"
+        fi
+    fi
+    if [ "${ARGUMENT_PKGUPDATES}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        if [ -n "${UPDATES_PKG}" ]; then
+            TELEGRAM_MESSAGE="$(printf "<b>Package updates available on %s</b>:\\n<code>%s</code>" "${HOSTNAME}" "${UPDATES_PKG}")"
+            method_telegram
+        fi
+    fi
+    exit 0
+}
+
+feature_pkgaudit() {
+    gather_information_server
+    gather_audit_pkg
+
+    if [ "${ARGUMENT_PKGAUDIT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        if [ -z "${AUDIT_PKG}" ]; then
+            printf 'There are no known package vulnerabilities to report.\n'
+        else
+            printf "The following packages contain known vulnerabilities:\n%s\n" "${AUDIT_PKG}"
+        fi
+    fi
+    if [ "${ARGUMENT_PKGAUDIT}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        if [ -z "${AUDIT_PKG}" ]; then
+            method_logger 'There are no known package vulnerabilities to report.'
+        else
+            method_logger "The following packages contain known vulnerabilities: ${AUDIT_PKG}"
+        fi
+    fi
+    if [ "${ARGUMENT_PKGAUDIT}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        if [ -n "${AUDIT_PKG}" ]; then
+            TELEGRAM_MESSAGE="$(printf "<b>The following packages on %s contain vulnerabilities</b>:\\n<code>%s</code>" "${HOSTNAME}" "${AUDIT_PKG}")"
+            method_telegram
+        fi
+    fi
+    exit 0
+}
+
+feature_pkgchecksum() {
+    gather_information_server
+    gather_checksum_pkg
+
+    if [ "${ARGUMENT_PKGCHECKSUM}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
+        if [ -z "${CHECKSUM_PKG}" ]; then
+            printf 'There are no package with invalid checksums.\n'
+        else
+            printf "The following packages have invalid checksums:\n%s\n" "${CHECKSUM_PKG}"
+        fi
+    fi
+    if [ "${ARGUMENT_PKGCHECKSUM}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
+        if [ -z "${CHECKSUM_PKG}" ]; then
+            method_logger 'There are no package with invalid checksums.'
+        else
+            method_logger "The following packages have invalid checksums: ${CHECKSUM_PKG}"
+        fi
+    fi
+    if [ "${ARGUMENT_PKGCHECKSUM}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
+        if [ -n "${CHECKSUM_PKG}" ]; then
+            TELEGRAM_MESSAGE="$(printf "<b>The following packages on %s contain invalid checksums</b>:\\n<code>%s</code>" "${HOSTNAME}" "${CHECKSUM_PKG}")"
+            method_telegram
+        fi
+    fi
     exit 0
 }
 
 ####################################################################################################
 # METHOD FUNCTIONS
 ####################################################################################################
+
+method_logger() {
+    logger -t serverbot "${1}"
+}
 
 method_telegram() {
     requirement_curl
@@ -1018,7 +1333,7 @@ method_telegram() {
         # sent payload to Telegram API and exit
         "${CURL}" --silent --max-time 10 --retry 5 --retry-delay 2 --retry-max-time 10 -d "${TELEGRAM_PAYLOAD}" "${TELEGRAM_URL}" > /dev/null 2>&1 &
     else
-        error_telegram_not_configured
+        program_error 'telegram not configured'
     fi
 }
 
@@ -1030,68 +1345,34 @@ serverbot_main() {
     requirement_os
     serverbot_argument_validate
 
-    # when both a feature and method cli are given
-    if [ "${ARGUMENT_SERVER}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_server_cli
-    elif [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_summary_cli
-    elif [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_overview_cli
-    elif [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_uptime_cli
-    elif [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_cpu_cli
-    elif [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_memory_cli
-    elif [ "${ARGUMENT_MEMORYTREE}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_memorytree_cli
-    elif [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_disk_cli
-    elif [ "${ARGUMENT_NETWORK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_network_cli
-    elif [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        feature_metrics_alert_cli
-    elif [ "${ARGUMENT_SERVER}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_server_telegram
-    elif [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_summary_telegram
-    elif [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_overview_telegram
-    elif [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_uptime_telegram
-    elif [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_cpu_telegram
-    elif [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_memory_telegram
-    elif [ "${ARGUMENT_MEMORYTREE}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_memorytree_telegram
-    elif [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_disk_telegram
-    elif [ "${ARGUMENT_NETWORK}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_network_telegram
-    elif [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        feature_metrics_alert_telegram
-    # method cli is the default method, so even when no method is given method cli is used
-    elif [ "${ARGUMENT_SERVER}" = '1' ]; then
-        feature_metrics_server_cli
+    if [ "${ARGUMENT_BASIC}" = '1' ]; then
+        feature_basic
     elif [ "${ARGUMENT_SUMMARY}" = '1' ]; then
-        feature_summary_cli
+        feature_summary
     elif [ "${ARGUMENT_OVERVIEW}" = '1' ]; then
-        feature_overview_cli
+        feature_overview
     elif [ "${ARGUMENT_UPTIME}" = '1' ]; then
-        feature_metrics_uptime_cli
+        feature_uptime
     elif [ "${ARGUMENT_CPU}" = '1' ]; then
-        feature_metrics_cpu_cli
+        feature_cpu
     elif [ "${ARGUMENT_MEMORY}" = '1' ]; then
-        feature_metrics_memory_cli
+        feature_memory
     elif [ "${ARGUMENT_MEMORYTREE}" = '1' ]; then
-        feature_metrics_memorytree_cli
+        feature_memorytree
     elif [ "${ARGUMENT_DISK}" = '1' ]; then
-        feature_metrics_disk_cli
+        feature_disk
     elif [ "${ARGUMENT_NETWORK}" = '1' ]; then
-        feature_metrics_network_cli
+        feature_network
     elif [ "${ARGUMENT_ALERT}" = '1' ]; then
-        feature_metrics_alert_cli
+        feature_alert
+    elif [ "${ARGUMENT_BASEUPDATES}" = '1' ]; then
+        feature_baseupdates
+    elif [ "${ARGUMENT_PKGUPDATES}" = '1' ]; then
+        feature_pkgupdates
+    elif [ "${ARGUMENT_PKGAUDIT}" = '1' ]; then
+        feature_pkgaudit
+    elif [ "${ARGUMENT_PKGCHECKSUM}" = '1' ]; then
+        feature_pkgchecksum
     elif [ "${ARGUMENT_CRON}" = '1' ]; then
         option_cron
     elif [ "${ARGUMENT_VERSION}" = '1' ]; then
@@ -1100,7 +1381,9 @@ serverbot_main() {
         option_help
     # the overview is shown when no arguments were given
     else
-        feature_overview_cli
+        ARGUMENT_OVERVIEW='1'
+        ARGUMENT_CLI='1'
+        feature_overview
     fi
 }
 
