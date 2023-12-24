@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.6.0-RELEASE (22-12-2023)
+# Version 1.7.0-RELEASE (24-12-2023)
 #############################################################################
 
 #############################################################################
@@ -34,8 +34,8 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.6.0'
-SERVERBOT_VERSION_DATE='22-12-2023'
+SERVERBOT_VERSION='1.7.0'
+SERVERBOT_VERSION_DATE='24-12-2023'
 
 # commands
 CURL="$(command -v curl)"
@@ -64,25 +64,32 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     THRESHOLD_DISK='0'
     SUMMARY_LOGGER='0'
     SUMMARY_TELEGRAM='0'
+    SUMMARY_CRON='0'
     OVERVIEW_LOGGER='0'
     OVERVIEW_TELEGRAM='0'
+    OVERVIEW_CRON='0'
     ALERT_LOGGER='0'
     ALERT_TELEGRAM='0'
-    BASE_UPDATES_LOGGER='NO'
-    BASE_UPDATES_TELEGRAM='NO'
-    PKG_UPDATES_LOGGER='NO'
-    PKG_UPDATES_TELEGRAM='NO'
-    PKG_AUDIT_LOGGER='NO'
-    PKG_AUDIT_TELEGRAM='NO'
-    PKG_CHECKSUM_LOGGER='NO'
-    PKG_CHECKSUM_TELEGRAM='NO'
+    ALERT_CRON='0'
+    BASE_UPDATES_LOGGER='0'
+    BASE_UPDATES_TELEGRAM='0'
+    BASE_UPDATES_CRON='0'
+    PKG_UPDATES_LOGGER='0'
+    PKG_UPDATES_TELEGRAM='0'
+    PKG_UPDATES_CRON='0'
+    PKG_AUDIT_LOGGER='0'
+    PKG_AUDIT_TELEGRAM='0'
+    PKG_AUDIT_CRON='0'
+    PKG_CHECKSUM_LOGGER='0'
+    PKG_CHECKSUM_TELEGRAM='0'
+    PKG_CHECKSUM_CRON='0'
     TELEGRAM_TOKEN='0'
     TELEGRAM_CHAT='0'
 
-    # and source backupbot.conf
+    # and source serverbot.conf
     . /usr/local/etc/serverbot.conf
 
-    # check whether backupbot.conf configuration parameters are used
+    # check whether serverbot.conf configuration parameters are used
     # general settings
     if [ "${SMT_ENABLE}" = 'yes' ] || [ "${SMT_ENABLE}" = 'YES' ]; then
         CONFIG_SMT_ENABLE='1'
@@ -119,7 +126,7 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     elif [ "${THRESHOLD_DISK}" -ge '0' ] && [ "${THRESHOLD_DISK}" -le '100' ]; then
         CONFIG_THRESHOLD_DISK="${THRESHOLD_DISK}"
     fi
-    # automated tasks
+    # automated summary task
     if [ "${SUMMARY_LOGGER}" = 'yes' ] || [ "${SUMMARY_LOGGER}" = 'YES' ]; then
         CONFIG_SUMMARY_LOGGER='1'
     else
@@ -130,6 +137,12 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_SUMMARY_TELEGRAM='0'
     fi
+    if [ "${SUMMARY_CRON}" = '0' ]; then
+        CONFIG_SUMMARY_CRON='0'
+    else
+        CONFIG_SUMMARY_CRON='1'
+    fi
+    # automated overview task
     if [ "${OVERVIEW_LOGGER}" = 'yes' ] || [ "${OVERVIEW_LOGGER}" = 'YES' ]; then
         CONFIG_OVERVIEW_LOGGER='1'
     else
@@ -140,6 +153,12 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_OVERVIEW_TELEGRAM='0'
     fi
+    if [ "${OVERVIEW_CRON}" = '0' ]; then
+        CONFIG_OVERVIEW_CRON='0'
+    else
+        CONFIG_OVERVIEW_CRON='1'
+    fi
+    # automated alert task
     if [ "${ALERT_LOGGER}" = 'yes' ] || [ "${ALERT_LOGGER}" = 'YES' ]; then
         CONFIG_ALERT_LOGGER='1'
     else
@@ -150,6 +169,12 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_ALERT_TELEGRAM='0'
     fi
+    if [ "${ALERT_CRON}" = '0' ]; then
+        CONFIG_ALERT_CRON='0'
+    else
+        CONFIG_ALERT_CRON='1'
+    fi
+    # automated baseupdates task
     if [ "${BASE_UPDATES_LOGGER}" = 'yes' ] || [ "${BASE_UPDATES_LOGGER}" = 'YES' ]; then
         CONFIG_BASEUPDATES_LOGGER='1'
     else
@@ -160,6 +185,12 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_BASEUPDATES_TELEGRAM='0'
     fi
+    if [ "${BASE_UPDATES_CRON}" = '0' ]; then
+        CONFIG_BASEUPDATES_CRON='0'
+    else
+        CONFIG_BASEUPDATES_CRON='1'
+    fi
+    # automated pkgupdates task
     if [ "${PKG_UPDATES_LOGGER}" = 'yes' ] || [ "${PKG_UPDATES_LOGGER}" = 'YES' ]; then
         CONFIG_PKGUPDATES_LOGGER='1'
     else
@@ -170,6 +201,12 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_PKGUPDATES_TELEGRAM='0'
     fi
+    if [ "${PKG_UPDATES_CRON}" = '0' ]; then
+        CONFIG_PKGUPDATES_CRON='0'
+    else
+        CONFIG_PKGUPDATES_CRON='1'
+    fi
+    # automated pkgaudit task
     if [ "${PKG_AUDIT_LOGGER}" = 'yes' ] || [ "${PKG_AUDIT_LOGGER}" = 'YES' ]; then
         CONFIG_PKGAUDIT_LOGGER='1'
     else
@@ -180,6 +217,12 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     else
         CONFIG_PKGAUDIT_TELEGRAM='0'
     fi
+    if [ "${PKG_AUDIT_CRON}" = '0' ]; then
+        CONFIG_PKGAUDIT_CRON='0'
+    else
+        CONFIG_PKGAUDIT_CRON='1'
+    fi
+    # automated pkgchecksum task
     if [ "${PKG_CHECKSUM_LOGGER}" = 'yes' ] || [ "${PKG_CHECKSUM_LOGGER}" = 'YES' ]; then
         CONFIG_PKGCHECKSUM_LOGGER='1'
     else
@@ -189,6 +232,11 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
         CONFIG_PKGCHECKSUM_TELEGRAM='1'
     else
         CONFIG_PKGCHECKSUM_TELEGRAM='0'
+    fi
+    if [ "${PKG_CHECKSUM_CRON}" = '0' ]; then
+        CONFIG_PKGCHECKSUM_CRON='0'
+    else
+        CONFIG_PKGCHECKSUM_CRON='1'
     fi
     # telegram configuration
     if [ "${TELEGRAM_TOKEN}" = '0' ] || [ "${TELEGRAM_CHAT}" = '0' ]; then
@@ -206,19 +254,36 @@ else
     CONFIG_THRESHOLD_DISK='80'
     CONFIG_SUMMARY_LOGGER='0'
     CONFIG_SUMMARY_TELEGRAM='0'
+    CONFIG_SUMMARY_CRON='0'
     CONFIG_OVERVIEW_LOGGER='0'
     CONFIG_OVERVIEW_TELEGRAM='0'
+    CONFIG_OVERVIEW_CRON='0'
     CONFIG_ALERT_LOGGER='0'
     CONFIG_ALERT_TELEGRAM='0'
+    CONFIG_ALERT_CRON='0'
     CONFIG_BASEUPDATES_LOGGER='0'
     CONFIG_BASEUPDATES_TELEGRAM='0'
+    CONFIG_BASEUPDATES_CRON='0'
     CONFIG_PKGUPDATES_LOGGER='0'
     CONFIG_PKGUPDATES_TELEGRAM='0'
+    CONFIG_PKGUPDATES_CRON='0'
     CONFIG_PKGAUDIT_LOGGER='0'
     CONFIG_PKGAUDIT_TELEGRAM='0'
+    CONFIG_PKGAUDIT_CRON='0'
     CONFIG_PKGCHECKSUM_LOGGER='0'
     CONFIG_PKGCHECKSUM_TELEGRAM='0'
+    CONFIG_PKGCHECKSUM_CRON='0'
 fi
+
+# combining automated feature tasks for more fine-grained control
+AUTOMATED_TASKS_COMBINED="$((CONFIG_SUMMARY_LOGGER + CONFIG_SUMMARY_TELEGRAM + CONFIG_OVERVIEW_LOGGER + CONFIG_OVERVIEW_TELEGRAM + CONFIG_ALERT_LOGGER + CONFIG_ALERT_TELEGRAM + CONFIG_BASEUPDATES_LOGGER + CONFIG_BASEUPDATES_TELEGRAM + CONFIG_PKGUPDATES_LOGGER + CONFIG_PKGUPDATES_TELEGRAM + CONFIG_PKGAUDIT_LOGGER + CONFIG_PKGAUDIT_TELEGRAM + CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGCHECKSUM_TELEGRAM))"
+AUTOMATED_SUMMARY_TASKS_COMBINED="$((CONFIG_SUMMARY_LOGGER + CONFIG_SUMMARY_TELEGRAM))"
+AUTOMATED_OVERVIEW_TASKS_COMBINED="$((CONFIG_OVERVIEW_LOGGER + CONFIG_OVERVIEW_TELEGRAM))"
+AUTOMATED_ALERT_TASKS_COMBINED="$((CONFIG_ALERT_LOGGER + CONFIG_ALERT_TELEGRAM))"
+AUTOMATED_BASEUPDATES_TASKS_COMBINED="$((CONFIG_BASEUPDATES_LOGGER + CONFIG_BASEUPDATES_TELEGRAM))"
+AUTOMATED_PKGUPDATES_TASKS_COMBINED="$((CONFIG_PKGUPDATES_LOGGER + CONFIG_PKGUPDATES_TELEGRAM))"
+AUTOMATED_PKGAUDIT_TASKS_COMBINED="$((CONFIG_PKGAUDIT_LOGGER + CONFIG_PKGAUDIT_TELEGRAM))"
+AUTOMATED_PKGCHECKSUM_TASKS_COMBINED="$((CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGCHECKSUM_TELEGRAM))"
 
 ####################################################################################################
 # ARGUMENT HANDLING
@@ -386,7 +451,6 @@ while test -n "$1"; do
     esac
 done
 
-
 ####################################################################################################
 # ERROR FUNCTIONS
 ####################################################################################################
@@ -401,21 +465,23 @@ program_error() {
 ####################################################################################################
 
 requirement_root() {
-    # show error when updatebot isn't run with root privileges
+    # show error if updatebot isn't run with root privileges
     if [ "$(id -u)" -ne '0' ]; then
         program_error 'this feature must be run with root privileges'
+        exit 1
     fi
 }
 
 requirement_os() {
-    # show error when freebsd-version cannot be found
+    # show error if freebsd-version cannot be found
     if [ ! "$(command -v freebsd-version)" ]; then
         program_error 'operating system is not supported'
+        exit 1
     fi
 }
 
 requirement_curl() {
-    # show error when curl cannot be found (which probably means the user has not installed curl)
+    # show error if curl cannot be found (which probably means the user has not installed curl)
     if [ ! "$(command -v curl)" ]; then
         program_error 'curl is not installed'
     fi
@@ -426,21 +492,57 @@ serverbot_argument_validate() {
     ARGUMENT_OPTIONS_COMBINED="$((ARGUMENT_VERSION + ARGUMENT_HELP + ARGUMENT_CRON))"
     ARGUMENT_FEATURES_COMBINED="$((ARGUMENT_BASIC + ARGUMENT_SUMMARY + ARGUMENT_OVERVIEW + ARGUMENT_UPTIME + ARGUMENT_CPU + ARGUMENT_MEMORY + ARGUMENT_MEMORYTREE + ARGUMENT_DISK + ARGUMENT_NETWORK + ARGUMENT_ALERT + ARGUMENT_BASEUPDATES + ARGUMENT_PKGUPDATES + ARGUMENT_PKGAUDIT + ARGUMENT_PKGCHECKSUM))"
     ARGUMENT_METHODS_COMBINED="$((ARGUMENT_CLI + ARGUMENT_LOGGER + ARGUMENT_TELEGRAM))"
-    
+
+    # show error if a unsupported argument is used    
     if [ "${ARGUMENT_NONE}" = '1' ]; then
         program_error 'invalid argument used'
-    # validate amount of selected options and return error when more than 1 option is used
+    # validate amount of selected options and return error if more than 1 option is used
     elif [ "${ARGUMENT_OPTIONS_COMBINED}" -gt '1' ]; then
         program_error 'only one serverbot option can be used at a time'
-    # validate amount of selected features and return error when more than 1 feature is used
+    # validate amount of selected features and return error if more than 1 feature is used
     elif [ "${ARGUMENT_FEATURES_COMBINED}" -gt '1' ]; then
         program_error 'only one serverbot feature can be used at a time'
+    # validate whether a option and feature are used at the same time and return error if this is the case
     elif [ "${ARGUMENT_OPTIONS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_FEATURES_COMBINED}" -ge '1' ]; then
         program_error 'options and features cannot be used at the same time'
+    # validate whether a option and method are used at the same time and return error if this is the case
     elif [ "${ARGUMENT_OPTIONS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ]; then
         program_error 'options and methods cannot be used at the same time'
+    # validate whether a method is used without a feature and return error if this is the case
     elif [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_FEATURE}" = '0' ]; then
         program_error 'a feature must be used when a method is used'
+    fi
+}
+
+option_cron_validate() {
+    CRON_NAME="${1}"
+    CRON="${2}"
+    # validate whether cron entry consists of allowed characters
+    
+    case "$CRON" in
+        (*[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'!@#$%^&()_+=[]{}\|;:",.<>?']*)
+            #CRON_VALIDATE_CHARACTERS='1'
+            #CRON_VALIDATE_CHARACTERS_ERROR='0'
+            CRON_ERROR='1'
+            printf " >   [!] unsupported characters\n"
+            ;;
+        (*)
+            #CRON_VALIDATE_CHARACTERS='0'
+            #CRON_VALIDATE_CHARACTERS_ERROR='1'
+            printf " >   [i] supported characters%s\n"
+            ;;
+    esac
+
+    # validate whether cron entry consists of 5 substrings
+    if [ "$(printf "%s" "${CRON}" | awk -F' ' '{print NF}')" -eq 5 ]; then
+        #CRON_VALIDATE_SUBSTRINGS='1'
+        #CRON_VALIDATE_SUBSTRINGS_ERROR='0'
+        printf " >   [i] supported format\n"
+    else
+        #CRON_VALIDATE_SUBSTRINGS='0'
+        #CRON_VALIDATE_SUBSTRINGS_ERROR='1'
+        CRON_ERROR='1'
+        printf " >   [!] unsuported format\n"
     fi
 }
 
@@ -457,7 +559,9 @@ option_version() {
 
 option_help() {
     printf "%bUsage:%b\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [feature] [method]%b\n" "${BOLD}" "${NC}"
+    printf "%b  serverbot [feature]%b                    # No explicit method defaults to method cli\n" "${BOLD}" "${NC}"
+    printf "%b  serverbot [feature] [method]%b           # Only one feature can be used at a time\n" "${BOLD}" "${NC}"
+    printf "%b  serverbot [feature] [method] [method]%b  # Multiple methods can be used at once\n" "${BOLD}" "${NC}"
     printf "%b  serverbot [option]%b\n\n" "${BOLD}" "${NC}"
     printf "%bFeatures:%b\n" "${BOLD}" "${NC}"
     printf "  -b, --basic                Basic server information\n"
@@ -469,11 +573,11 @@ option_help() {
     printf "  -M, --memorytree           Extended memory usage metrics\n"
     printf "      --disk                 Disk usage metrics\n"
     printf "      --network              Interfaces and IP addresses\n"
-    printf "  -a, --alert                Reports whether metric thresholds are reached\n"
+    printf "      --alert                Reports whether metric thresholds are reached\n"
     printf "      --baseupdates          Reports about available base system updates\n"
     printf "      --pkgupdates           Reports about available package updates\n"
     printf "      --pkgaudit             Reports about known package vulnerabilities\n"
-    printf "      --pkgchecksum          Reports about mismatching package checksums\n"
+    printf "      --pkgchecksum          Reports about mismatching package checksums\n\n"
     printf "%bMethods:%b\n" "${BOLD}" "${NC}"
     printf "  -c, --cli (default)        Output [feature] to command line\n"
     printf "  -l, --logger               Output [feature] to logger\n"
@@ -488,31 +592,127 @@ option_help() {
 option_cron() {
     requirement_root
 
-    printf "[1] Removing old serverbot cronjob\n"
-    if [ -f //etc/cron.d/serverbot ]; then
+    # cronjob creation will only work when the cron variables are set in serverbot.conf
+    printf "[0] Check if /usr/local/etc/serverbot.conf exists\n"
+    if [ -f /usr/local/etc/serverbot.conf ]; then
+        printf " >  found /usr/local/etc/serverbot.conf\n"
+    else
+        printf " >  /usr/local/etc/serverbot.conf does not exist, aborting\n"
+        program_error 'automated cronjob creation requires the /usr/local/etc/serverbot.conf configuration file with the FEATURE_CRON variables set'
+    fi
+    # check whether automated feature is enabled
+    # then check whether the corresponding cron parameter has been set in serverbot.conf
+    # then validate the cron parameter and report any issues
+    # finally abort when issues are found
+    # feature summary
+    printf "[1] Checking cron configuration validity\n"
+    if [ "${AUTOMATED_SUMMARY_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_SUMMARY_CRON}" -eq '1' ]; then
+            printf " >  Validating SUMMARY_CRON (enabled)\n"
+            option_cron_validate "SUMMARY_CRON" "${SUMMARY_CRON}"
+        else
+            printf " >  SUMMARY_CRON is not set\n"
+            program_error 'SUMMARY_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping SUMMARY_CRON (disabled)\n"
+    fi
+    # feature overview
+    if [ "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_OVERVIEW_CRON}" -eq '1' ]; then
+            printf " >  Validating OVERVIEW_CRON (enabled)\n"
+            option_cron_validate "OVERVIEW_CRON" "${OVERVIEW_CRON}"
+        else
+            printf " >  OVERVIEW_CRON is not set\n"
+            program_error 'OVERVIEW_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping OVERVIEW_CRON (disabled)\n"
+    fi
+    # feature alert
+    if [ "${AUTOMATED_ALERT_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_ALERT_CRON}" -eq '1' ]; then
+            printf " >  Validating ALERT_CRON (enabled)\n"
+            option_cron_validate "ALERT_CRON" "${ALERT_CRON}"
+        else
+            printf " >  ALERT_CRON is not set\n"
+            program_error 'ALERT_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping ALERT_CRON (disabled)\n"
+    fi
+    # feature baseupdates
+    if [ "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_BASEUPDATES_CRON}" -eq '1' ]; then
+            printf " >  Validating BASE_UPDATES_CRON (enabled)\n"
+            option_cron_validate "BASE_UPDATES_CRON" "${BASE_UPDATES_CRON}"
+        else
+            printf " >  BASE_UPDATES_CRON is not set\n"
+            program_error 'BASE_UPDATES_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping BASE_UPDATES_CRON (disabled)\n"
+    fi
+    # feature pkgupdates
+    if [ "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_PKGUPDATES_CRON}" -eq '1' ]; then
+            printf " >  Validating PKG_UPDATES_CRON (enabled)\n"
+            option_cron_validate "PKG_UPDATES_CRON" "${PKG_UPDATES_CRON}"
+        else
+            printf " >  PKG_UPDATES_CRON is not set\n"
+            program_error 'PKG_UPDATES_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping PKG_UPDATES_CRON (disabled)\n"
+    fi
+    # feature pkgaudit
+    if [ "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_PKGAUDIT_CRON}" -eq '1' ]; then
+            printf " >  Validating PKG_AUDIT_CRON (enabled)\n"
+            option_cron_validate "PKG_AUDIT_CRON" "${PKG_AUDIT_CRON}"
+        else
+            printf " >  PKG_AUDIT_CRON is not set\n"
+            program_error 'PKG_AUDIT_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping PKG_AUDIT_CRON (disabled)\n"
+    fi
+    # feature pkgchecksum
+    if [ "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" -ge '1' ]; then
+        if [ "${CONFIG_PKGCHECKSUM_CRON}" -eq '1' ]; then
+            printf " >  Validating PKG_CHECKSUM_CRON (enabled)\n"
+            option_cron_validate "PKG_CHECKSUM_CRON" "${PKG_CHECKSUM_CRON}"
+        else
+            printf " >  PKG_CHECKSUM_CRON is not set\n"
+            program_error 'PKG_CHECKSUM_CRON not set in /usr/local/etc/serverbot.conf'
+        fi
+    else
+        printf " >  Skipping PKG_CHECKSUMS_CRON (disabled)\n"
+    fi
+    if [ "${CRON_ERROR}" = '1' ]; then
+        program_error 'cron configuration must be valid'
+    else
+        printf " >  All CRON entries in /usr/local/etc/serverbot.conf are valid\n"
+    fi
+    # old cronjob file can only be removed when it exists
+    printf "[2] Removing old serverbot cronjob\n"
+    if [ -f /etc/cron.d/serverbot ]; then
         rm -f /etc/cron.d/serverbot
         printf " >  Done\n"
     else
-        printf "    Cronjob not found, skipping removal"
+        printf "    Cronjob file not found, skipping removal"
     fi
-    
-    AUTOMATED_TASKS_COMBINED="$((CONFIG_SUMMARY_LOGGER + CONFIG_SUMMARY_TELEGRAM + CONFIG_OVERVIEW_LOGGER + CONFIG_OVERVIEW_TELEGRAM + CONFIG_ALERT_LOGGER + CONFIG_ALERT_TELEGRAM + CONFIG_BASEUPDATES_LOGGER + CONFIG_BASEUPDATES_TELEGRAM + CONFIG_PKGUPDATES_LOGGER + CONFIG_PKGUPDATES_TELEGRAM + CONFIG_PKGAUDIT_LOGGER + CONFIG_PKGAUDIT_TELEGRAM + CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGCHECKSUM_TELEGRAM))"
-    AUTOMATED_SUMMARY_TASKS_COMBINED="$((CONFIG_SUMMARY_LOGGER + CONFIG_SUMMARY_TELEGRAM))"
-    AUTOMATED_OVERVIEW_TASKS_COMBINED="$((CONFIG_OVERVIEW_LOGGER + CONFIG_OVERVIEW_TELEGRAM))"
-    AUTOMATED_ALERT_TASKS_COMBINED="$((CONFIG_ALERT_LOGGER + CONFIG_ALERT_TELEGRAM))"
-    AUTOMATED_BASEUPDATES_TASKS_COMBINED="$((CONFIG_BASEUPDATES_LOGGER + CONFIG_BASEUPDATES_TELEGRAM))"
-    AUTOMATED_PKGUPDATES_TASKS_COMBINED="$((CONFIG_PKGUPDATES_LOGGER + CONFIG_PKGUPDATES_TELEGRAM))"
-    AUTOMATED_PKGAUDIT_TASKS_COMBINED="$((CONFIG_PKGAUDIT_LOGGER + CONFIG_PKGAUDIT_TELEGRAM))"
-    AUTOMATED_PKGCHECKSUM_TASKS_COMBINED="$((CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGCHECKSUM_TELEGRAM))"
-
+    # if there are no activated automated tasks then they do not have to be added to the cronjob
     if [ "${AUTOMATED_TASKS_COMBINED}" -eq '0' ]; then
-        printf "[2] No automated tasks to add\n"
+        printf "[3] No automated tasks to add\n"
         printf " >  All done!\n"
     else
-        printf "[2] Adding configured automated tasks for:\n"
+        # add cronjob for each activated automated task 
+        printf "[3] Adding configured automated tasks for features:\n"
         printf "# This cronjob manages automated serverbot features\n" > /etc/cron.d/serverbot
+        # feature summary
         if [ "${AUTOMATED_SUMMARY_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Summary feature on cron schedule %s\n" "${SUMMARY_CRON}"
+            printf " >  SUMMARY on cron schedule %s\n" "${SUMMARY_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --summary " "${SUMMARY_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_SUMMARY_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -521,8 +721,9 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # feature overview
         if [ "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Overview feature on cron schedule %s\n" "${OVERVIEW_CRON}"
+            printf " >  OVERVIEW on cron schedule %s\n" "${OVERVIEW_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --overview " "${OVERVIEW_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_OVERVIEW_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -531,8 +732,9 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # feature alert
         if [ "${AUTOMATED_ALERT_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Alert feature on cron schedule %s\n" "${ALERT_CRON}"
+            printf " >  ALERT on cron schedule %s\n" "${ALERT_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --alert " "${ALERT_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_ALERT_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -541,8 +743,9 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # feature baseupdates
         if [ "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Base updates feature on cron schedule %s\n" "${BASE_UPDATES_CRON}"
+            printf " >  BASEUPDATES feature on cron schedule %s\n" "${BASE_UPDATES_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --baseupdates " "${BASE_UPDATES_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_BASEUPDATES_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -551,8 +754,9 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # feature pkgupdates
         if [ "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Pkg updates feature on cron schedule %s\n" "${PKG_UPDATES_CRON}"
+            printf " >  PKGUPDATES feature on cron schedule %s\n" "${PKG_UPDATES_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --pkgupdates " "${PKG_UPDATES_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_PKGUPDATES_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -561,8 +765,9 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # feature pkgaudit
         if [ "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Pkg audit feature on cron schedule %s\n" "${PKG_AUDIT_CRON}"
+            printf " >  PKGAUDIT feature on cron schedule %s\n" "${PKG_AUDIT_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --pkgaudit " "${PKG_AUDIT_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_PKGAUDIT_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -571,8 +776,9 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # feature pkgchecksum
         if [ "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  Pkg checksum feature on cron schedule %s\n" "${PKG_CHECKSUM_CRON}"
+            printf " >  PKGCHECKSUM feature on cron schedule %s\n" "${PKG_CHECKSUM_CRON}"
             printf "\n%s root /usr/local/bin/serverbot --pkgchecksum " "${PKG_CHECKSUM_CRON}" >> /etc/cron.d/serverbot
             if [ "${CONFIG_PKGCHECKSUM_LOGGER}" -eq '1' ]; then
                 printf "%slogger " "--" >> /etc/cron.d/serverbot
@@ -581,8 +787,10 @@ option_cron() {
                 printf "%stelegram " "--" >> /etc/cron.d/serverbot
             fi
         fi
+        # add some white lines to the end
         printf " \n\n" >> /etc/cron.d/serverbot
-        printf "[3] Changing cronjob owner and group to root:wheel\n"
+        # change ownership of cronjob file so users without administrative privileges cannot edit it
+        printf "[4] Changing cronjob owner and group to root:wheel\n"
         chown root:wheel /etc/cron.d/serverbot
         printf " >  Done\n"
         printf "\nAll done! The new schedule can be found in /etc/cron.d/serverbot.\n"
@@ -667,6 +875,7 @@ convert_bytes_to_human_readable_disk() {
 ####################################################################################################
 
 gather_information_server() {
+    # gather specific system information for finer control over the method messages
     FREEBSD_INSTALLED_VERSION="$(freebsd-version -k)"
     FREEBSD_RUNNING_VERSION="$(freebsd-version -r)"
     FREEBSD_USERLAND_VERSION="$(freebsd-version -u)"
@@ -924,8 +1133,10 @@ gather_metrics_disk() {
 }
 
 gather_updates_base() {
+    # freebsd-update cron sleeps netween 1 and 3600 seconds by default
     freebsd-update cron
     freebsd-update updatesready > /dev/null
+    # freebsd-update updatesready returns exit code 2 if there are no patches
     if [ "${?}" -eq '2' ]; then
         UPDATES_BASE='0'
     else
@@ -934,15 +1145,19 @@ gather_updates_base() {
 }
 
 gather_updates_pkg() {
+    # update package database silently
     pkg update --force --quiet
+    # only grep packages that can be upgraded and remove the '<'
     UPDATES_PKG="$(pkg version | grep "<" | tr -d "\<")"
 }
 
 gather_audit_pkg() {
+    # audit packages silently
     AUDIT_PKG="$(pkg audit --fetch --quiet)"
 }
 
 gather_checksum_pkg() {
+    # for some reason pkg check writes its output to stderr
     CHECKSUM_PKG="$(pkg check --checksums --all --quiet 2>&1)"
 }
 
@@ -1345,6 +1560,11 @@ serverbot_main() {
     requirement_os
     serverbot_argument_validate
 
+    # default to method CLI if no method is used
+    if [ "${ARGUMENT_METHOD}" = '0' ]; then
+        ARGUMENT_CLI='1'
+    fi
+    # direct serverbot to the right feature function
     if [ "${ARGUMENT_BASIC}" = '1' ]; then
         feature_basic
     elif [ "${ARGUMENT_SUMMARY}" = '1' ]; then
@@ -1379,7 +1599,7 @@ serverbot_main() {
         option_version
     elif [ "${ARGUMENT_HELP}" = '1' ]; then
         option_help
-    # the overview is shown when no arguments were given
+    # feature overview with method cli is shown when no arguments are given
     else
         ARGUMENT_OVERVIEW='1'
         ARGUMENT_CLI='1'
