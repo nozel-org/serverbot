@@ -5,14 +5,15 @@
 
 ## Features
 * Easy to use CLI interface with clear help text.
-* Metrics like cpu, memory and disk usage.
-* Server information like hostname and uptime.
-* Overviews with combined metrics and server information.
-* Alert function that reports when thresholds have been reached.
-* Output to CLI and Telegram are supported.
+* Shows and alerts about metrics like CPU, memory and disk usage.
+* Shows system information such as kernel, userland, hostname and uptime.
+* Reports about available base system and package updates.
+* Reports about known package vulnerabilities and checksum mismatches.
+* Supports CLI, logger and/or Telegram bots as output methods.
+* Features can be automated and cronjobs can be created automatically.
 
 ## How to use
-`serverbot` has **features**, **methods** and **options**. Options can be used standalone, but a feature always requires a method and vice versa. Some examples:
+`serverbot` has **features**, **methods** and **options**. Options must be used standalone, but a feature can be used with a method. Some examples:
 
 ```
 # options
@@ -20,33 +21,40 @@ $ serverbot --help                           # Displays help text
 $ serverbot --cron                           # Effectuates automated tasks
 
 # features/methods
-$ serverbot --overview ---cli                # Shows a extended overview of server metrics on CLI
-$ serverbot --summary --telegram             # Shows a summary of server metrics on Telegram
-$ serverbot --alert --cli                    # Shows whether metrics exceed thresholds on CLI
-$ serverbot --alert --telegram               # Shows whether metrics exceed thresholds on Telegram
+$ serverbot --overview ---cli                # Shows a extended system overview on the CLI
+$ serverbot --summary --telegram             # Shows basic server metrics on Telegram
+$ serverbot --pkgupdates --cli               # Reports about available package updates
+$ serverbot --alert --telegram               # Shows whether system metrics exceed thresholds on Telegram
 ```
 
 For a full list of features, methods and options run `serverbot --help`:
 ```
 $ serverbot --help
 Usage:
-  serverbot [feature]... [method]...
-  serverbot [option]...
+  serverbot [feature]                    # No explicit method defaults to method cli
+  serverbot [feature] [method]           # Only one feature can be used at a time
+  serverbot [feature] [method] [method]  # Multiple methods can be used at once
+  serverbot [option]
 
 Features:
-  -s, --server               Basic server information
-  -S, --summary              Server overview
+  -b, --basic                Basic server information
+  -s, --summary              Server metrics overview
   -o, --overview             Extended server overview
-  -u, --uptime               Server uptime metrics
-  -C, --cpu                  CPU load metrics
-  -m, --memory               Basic memory usage metrics
+      --uptime               Server uptime metrics
+      --cpu                  CPU load metrics
+      --memory               Basic memory usage metrics
   -M, --memorytree           Extended memory usage metrics
-  -d, --disk                 Disk usage metrics
-  -n, --network              Interfaces and IP addresses
-  -a, --alert                Alerts when metric thresholds are reached
+      --disk                 Disk usage metrics
+      --network              Interfaces and IP addresses
+      --alert                Reports whether metric thresholds are reached
+      --baseupdates          Reports about available base system updates
+      --pkgupdates           Reports about available package updates
+      --pkgaudit             Reports about known package vulnerabilities
+      --pkgchecksum          Reports about mismatching package checksums
 
 Methods:
   -c, --cli (default)        Output [feature] to command line
+  -l, --logger               Output [feature] to logger
   -t, --telegram             Output [feature] to Telegram
 
 Options:
@@ -62,7 +70,7 @@ wget https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot -O /
 chown root:wheel /usr/local/bin/serverbot
 chmod 555 /usr/local/bin/serverbot
 ```
-Optionally you can add serverbot's configuration file for additional features:
+Optionally you can add serverbot's [configuration file](https://codeberg.org/nozel/serverbot/src/branch/master/serverbot.conf) for additional features and more fine-grained control:
 ```
 wget https://raw.githubusercontent.com/nozel-org/serverbot/master/serverbot.conf -O /usr/local/etc/serverbot.conf
 chown root:wheel /usr/local/etc/serverbot.conf
@@ -76,6 +84,28 @@ General settings and automated tasks can be configured in `/usr/local/etc/server
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
 ## Changelog
+### 1.7.0-RELEASE ([24-12-2023](https://codeberg.org/nozel/serverbot/commit/20fb9e8383916531d0fd5fc1202d014693749844))
+- Added validation to cron entries in serverbot.conf #68.
+- Made method cli the default method when no method is chosen #70.
+- Made help text more clear and helpful #76.
+- Added a check for the existence of serverbot.conf when using the automatic cronjobs generation #75.
+- Removed old references to backupbot #79.
+- Added and improved comments for readability #74.
+- Fixed inconsistent variable validation #73.
+
+### 1.6.0-RELEASE ([22-12-2023](https://codeberg.org/nozel/serverbot/commit/81841b4b5b2f51d911e733975da4ec1f4cd64243))
+Aside from many new features, the existing code has been refactored and improved considerably as well. Despite the large amount of changes, it's completely backwards compatible (hence the minor version increase).
+
+- Changed serverbot's license to Apache-2.0 #51.
+- Added support for using multiple methods simultaneously #65.
+- Added logger method #20 #64.
+- Added feature baseupdates that alerts when base system updates are available #9.
+- Added feature pkgupdates that alerts when package updates are available #61.
+- Added feature pkgaudit that alerts when packages are vulnerable #62.
+- Added feature pkgchecksum that alerts about package checksum mismatches #63.
+- Added information about running kernel, installed kernel and userland version to feature overview #58 #57.
+- Refactored different pars of the code #52 #54 #53 #55 #56 #59 #60 #66 #67.
+
 ### 1.5.0-RELEASE ([28-01-2023](https://github.com/nozel-org/serverbot/commit/9297b2545c296697b32938eb851bd90d3e5e12ce))
 - Added shorter arguments.
 - Added the direct path of command binaries.
