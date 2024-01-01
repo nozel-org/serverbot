@@ -83,6 +83,9 @@ General settings and automated tasks can be configured in `/usr/local/etc/server
 ## Support
 If you have questions, suggestions or find bugs, please let us know via the issue tracker.
 
+## License
+This software (i.e. code and written documentation in this case) is licensed under the Apache 2.0 license. Do note that this license does not grant permission to use trade names, trademarks, logos, images, service marks or product names of the licensor, except as required for reasonable and customary use in describing the origin of the Work and reproducing the content of the NOTICE file.
+
 ## Changelog
 ### 1.7.0-RELEASE ([24-12-2023](https://codeberg.org/nozel/serverbot/commit/20fb9e8383916531d0fd5fc1202d014693749844))
 - Added validation to cron entries in serverbot.conf #68.
