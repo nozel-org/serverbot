@@ -1,13 +1,13 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.7.0-RELEASE (24-12-2023)
+# Version 1.8.0-RELEASE (31-01-2024)
 #############################################################################
 
 #############################################################################
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright 2023 Sebas Veeke. All rights reserved.
+# Copyright 2016 Sebas Veeke. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License. 
+# limitations under the License.
 #############################################################################
 
 #############################################################################
@@ -34,8 +34,8 @@
 #############################################################################
 
 # serverbot version
-SERVERBOT_VERSION='1.7.0'
-SERVERBOT_VERSION_DATE='24-12-2023'
+SERVERBOT_VERSION='1.8.0'
+SERVERBOT_VERSION_DATE='31-01-2024'
 
 # commands
 CURL="$(command -v curl)"
@@ -62,6 +62,7 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     THRESHOLD_LOAD='0'
     THRESHOLD_MEMORY='0'
     THRESHOLD_DISK='0'
+    THRESHOLD_CPUTEMP='0'
     SUMMARY_LOGGER='0'
     SUMMARY_TELEGRAM='0'
     SUMMARY_CRON='0'
@@ -113,18 +114,31 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     # alert configuration
     if [ "${THRESHOLD_LOAD}" -lt '0' ]; then
         CONFIG_THRESHOLD_LOAD='95'
-    elif [ "${THRESHOLD_LOAD}" -ge '0' ]; then
+    elif [ "${THRESHOLD_LOAD}" -gt '0' ]; then
         CONFIG_THRESHOLD_LOAD="${THRESHOLD_LOAD}"
+    else
+        CONFIG_THRESHOLD_LOAD='95'
     fi
     if [ "${THRESHOLD_MEMORY}" -lt '0' ] || [ "${THRESHOLD_MEMORY}" -gt '100' ]; then
         CONFIG_THRESHOLD_MEMORY='90'
-    elif [ "${THRESHOLD_MEMORY}" -ge '0' ] || [ "${THRESHOLD_MEMORY}" -le '100' ]; then
+    elif [ "${THRESHOLD_MEMORY}" -gt '0' ] || [ "${THRESHOLD_MEMORY}" -le '100' ]; then
         CONFIG_THRESHOLD_MEMORY="${THRESHOLD_MEMORY}"
+    else
+        CONFIG_THRESHOLD_MEMORY='90'
     fi
     if [ "${THRESHOLD_DISK}" -lt '0' ] || [ "${THRESHOLD_DISK}" -gt '100' ]; then
         CONFIG_THRESHOLD_DISK='80'
-    elif [ "${THRESHOLD_DISK}" -ge '0' ] && [ "${THRESHOLD_DISK}" -le '100' ]; then
+    elif [ "${THRESHOLD_DISK}" -gt '0' ] && [ "${THRESHOLD_DISK}" -le '100' ]; then
         CONFIG_THRESHOLD_DISK="${THRESHOLD_DISK}"
+    else
+        CONFIG_THRESHOLD_DISK='80'
+    fi
+    if [ "${THRESHOLD_CPUTEMP}" -lt '0' ]; then
+        CONFIG_THRESHOLD_CPUTEMP='95'
+    elif [ "${THRESHOLD_CPUTEMP}" -gt '0' ]; then
+        CONFIG_THRESHOLD_CPUTEMP="${THRESHOLD_CPUTEMP}"
+    else
+        CONFIG_THRESHOLD_CPUTEMP='95'
     fi
     # automated summary task
     if [ "${SUMMARY_LOGGER}" = 'yes' ] || [ "${SUMMARY_LOGGER}" = 'YES' ]; then
@@ -252,6 +266,7 @@ else
     CONFIG_THRESHOLD_LOAD='95'
     CONFIG_THRESHOLD_MEMORY='90'
     CONFIG_THRESHOLD_DISK='80'
+    CONFIG_THRESHOLD_CPUTEMP='95'
     CONFIG_SUMMARY_LOGGER='0'
     CONFIG_SUMMARY_TELEGRAM='0'
     CONFIG_SUMMARY_CRON='0'
@@ -552,7 +567,7 @@ option_cron_validate() {
 
 option_version() {
     printf "Serverbot %s (%s)\n" "${SERVERBOT_VERSION}" "${SERVERBOT_VERSION_DATE}"
-    printf "Copyright (C) 2016-2023 S. Veeke. All rights reserved.\n"
+    printf "Copyright (C) 2016 S. Veeke. All rights reserved.\n"
     printf "SPDX-License-Identifier: Apache-2.0.\n"
     exit 0
 }
@@ -1132,6 +1147,38 @@ gather_metrics_disk() {
     ROOT_PARTITION_FREE_VIEW="${ROOT_PARTITION_VIEW}"
 }
 
+gather_temperature_cpu() {
+    # check whether CPU manufacturer is Intel, AMD or other
+    # then check whether the corresponding device driver is loaded
+    # if this is not the case, then load the device driver
+    if [ "$(sysctl hw.model | grep -i intel)" ]; then
+        CPU_MANUFACTURER='intel'
+        if ! [ "$(kldstat | grep -i coretemp)" ]; then
+            kldload -n coretemp
+        fi
+    elif [ "$(sysctl hw.model | grep -i amd)" ]; then
+        CPU_MANUFACTURER='intel'
+        if ! [ "$(kldstat | grep -i amdtemp)" ]; then
+            kldload -n amdtemp
+        fi
+    else
+        CPU_MANUFACTURER='0'
+    fi
+    # read temperature if CPU manufacturer is supported
+    if [ "${CPU_MANUFACTURER}" = 'intel' ] || [ "${CPU_MANUFACTURER}" = 'amd' ]; then
+        CPU_TEMPERATURE='0'
+        # iterate over CPU core temperatures and find the highest temperature value
+        for temperature in $(sysctl dev.cpu | grep 'temperature' | cut -d ' ' -f2- | cut -d '.' -f1); do
+            if [ ${temperature} -gt ${CPU_TEMPERATURE} ]; then
+                CPU_TEMPERATURE="${temperature}"
+            fi
+        done
+    # disable CPU temperature alert if CPU manufacturer is not supported
+    elif [ "${CPU_MANUFACTURER}" = '0' ]; then
+        DISABLE_ALERT_CPUTEMP='1'
+    fi
+}
+
 gather_updates_base() {
     # freebsd-update cron sleeps netween 1 and 3600 seconds by default
     freebsd-update cron
@@ -1368,10 +1415,11 @@ feature_alert() {
     gather_metrics_cpu
     gather_metrics_memory
     gather_metrics_disk
+    gather_temperature_cpu
 
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
         if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-            printf "%b[!]%b %bcurrent server load of%b %b%s%b%b%%  exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[!]%b %bcurrent server load of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
         else
             printf "%b[i]%b %bcurrent server load of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
         fi
@@ -1384,6 +1432,13 @@ feature_alert() {
             printf "%b[!]%b %bcurrent disk usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
         else
             printf "%b[i]%b %bcurrent disk usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+        fi
+        if ! [ "${DISABLE_ALERT_CPUTEMP}" = '1' ]; then
+            if [ "${CPU_TEMPERATURE}" -gt "${CONFIG_THRESHOLD_CPUTEMP}" ]; then
+                printf "%b[!]%b %bcurrent CPU temperature of%b %b%s%b%bC exceeds the threshold of%b %b%s%b%bC%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
+            else
+                printf "%b[i]%b %bcurrent CPU temperature of%b %b%s%b%bC does not exceed the threshold of%b %b%s%b%bC%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
+            fi
         fi
     fi
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
@@ -1402,6 +1457,13 @@ feature_alert() {
         #else
         #    method_logger "current disk usage of ${ROOT_PARTITION_USED_PERCENTAGE} does not exceed the threshold of ${CONFIG_THRESHOLD_DISK}"
         fi
+        if ! [ "${DISABLE_ALERT_CPUTEMP}" = '1' ]; then
+            if [ "${CPU_TEMPERATURE}" -gt "${CONFIG_THRESHOLD_CPUTEMP}" ]; then
+                method_logger "current CPU temperature of ${CPU_TEMPERATURE}C exceeds the threshold of ${CONFIG_THRESHOLD_CPUTEMP}C"
+            #else
+            #    method_logger "current CPU temperature of ${CPU_TEMPERATURE} does not exceed the threshold of ${CONFIG_THRESHOLD_CPUTEMP}"
+            fi
+        fi
     fi
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
         if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
@@ -1415,6 +1477,12 @@ feature_alert() {
         if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
             TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent disk usage (${ROOT_PARTITION_USED_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_DISK}%).")"
             method_telegram
+        fi
+        if ! [ "${DISABLE_ALERT_CPUTEMP}" = '1' ]; then
+            if [ "${CPU_TEMPERATURE}" -gt "${CONFIG_THRESHOLD_CPUTEMP}" ]; then
+            TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent CPU temperature (${CPU_TEMPERATURE}C) exceeds the threshold (${CONFIG_THRESHOLD_CPUTEMP}C).")"
+            method_telegram
+            fi
         fi
     fi
     exit 0
