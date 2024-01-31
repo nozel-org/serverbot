@@ -5,7 +5,7 @@ Serverbot is a simplistic, lightweight and small (<1000 LOC) server monitoring t
 
 ## Features
 * Easy to use CLI interface with clear help text.
-* Shows and alerts about metrics like CPU, memory and disk usage.
+* Shows and alerts about metrics like CPU, memory, disk usage and CPU temperature.
 * Shows system information such as kernel, userland, hostname and uptime.
 * Reports about available base system and package updates.
 * Reports about known package vulnerabilities and checksum mismatches.
