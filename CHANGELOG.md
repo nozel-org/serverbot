@@ -1,6 +1,11 @@
 # Changelog
 This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for code. For pre-release versions the `-DEVELOPMENT` identifier is used. For release versions the `-RELEASE` identifier is used.
 
+### 1.8.0-RELEASE ([31-01-2024](https://codeberg.org/nozel/serverbot/commit/88f4cc17b6e056a9372bedd6cba8cae14021cfa9))
+- Added CPU temperature for Intel and AMD processors to feature alert #19.
+- Changed copyright years to first year instead of last #92.
+- Fixed a bug that occurred when someone didn't configure alert thresholds #94.
+
 ### 1.7.0-RELEASE ([24-12-2023](https://codeberg.org/nozel/serverbot/commit/20fb9e8383916531d0fd5fc1202d014693749844))
 - Added validation to cron entries in serverbot.conf #68.
 - Made method cli the default method when no method is chosen #70.
