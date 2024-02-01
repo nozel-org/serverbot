@@ -1,7 +1,7 @@
 # Serverbot
 Serverbot is a simplistic, lightweight and small (<1000 LOC) server monitoring tool made for FreeBSD.
 
-![alt text](https://raw.githubusercontent.com/nozel-org/serverbot/master/resources/banner.jpg)
+![alt text](https://codeberg.org/nozel/serverbot/raw/branch/master/resources/banner.jpg)
 
 ## Features
 * Easy to use CLI interface with clear help text.
