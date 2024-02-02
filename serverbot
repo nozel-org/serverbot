@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.8.0-RELEASE (31-01-2024)
+# Version 1.9.0-RELEASE (02-02-2024)
 #############################################################################
 
 #############################################################################
@@ -33,9 +33,13 @@
 # PROGRAM VARIABLES
 #############################################################################
 
-# serverbot version
-SERVERBOT_VERSION='1.8.0'
-SERVERBOT_VERSION_DATE='31-01-2024'
+# version and date
+SERVERBOT_VERSION='1.9.0'
+SERVERBOT_VERSION_DATE='02-02-2024'
+
+# file locations
+SERVERBOT_CONFIGURATION='/usr/local/etc/serverbot.conf'
+SERVERBOT_CRONFILE='/etc/cron.d/serverbot'
 
 # commands
 CURL="$(command -v curl)"
@@ -43,18 +47,22 @@ CURL="$(command -v curl)"
 # colors
 NC='\033[0;0m'
 BOLD='\033[1m'
+YELLOW='\033[1;33m'
+LRED='\033[1;31m'
 #UNDER='\033[4m'
 #WHITE='\033[1;37m'
 #RED='\033[0;31m'
 #GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-LRED='\033[1;31m'
 #LGREEN='\033[1;32m'
 #LMAGENTA='\033[1;35m'
 #LCYAN='\033[1;36m'
 
+#############################################################################
+# CONFIGURATION FILE HANDLING
+#############################################################################
+
 # check whether serverbot.conf is available and source it
-if [ -f /usr/local/etc/serverbot.conf ]; then
+if [ -f "${SERVERBOT_CONFIGURATION}" ]; then
     # populate all usable variables to have defaults and check validity later on
     SMT_ENABLE='0'
     LOAD_INTERVAL='0'
@@ -88,7 +96,7 @@ if [ -f /usr/local/etc/serverbot.conf ]; then
     TELEGRAM_CHAT='0'
 
     # and source serverbot.conf
-    . /usr/local/etc/serverbot.conf
+    . "${SERVERBOT_CONFIGURATION}"
 
     # check whether serverbot.conf configuration parameters are used
     # general settings
@@ -305,12 +313,10 @@ AUTOMATED_PKGCHECKSUM_TASKS_COMBINED="$((CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGC
 ####################################################################################################
 
 # populate validation variables with zeros for validation
-# options
 ARGUMENT_OPTION='0'
 ARGUMENT_VERSION='0'
 ARGUMENT_HELP='0'
 ARGUMENT_CRON='0'
-# features
 ARGUMENT_FEATURE='0'
 ARGUMENT_BASIC='0'
 ARGUMENT_SUMMARY='0'
@@ -326,7 +332,6 @@ ARGUMENT_BASEUPDATES='0'
 ARGUMENT_PKGUPDATES='0'
 ARGUMENT_PKGAUDIT='0'
 ARGUMENT_PKGCHECKSUM='0'
-# methods
 ARGUMENT_METHOD='0'
 ARGUMENT_CLI='0'
 ARGUMENT_LOGGER='0'
@@ -587,8 +592,8 @@ option_help() {
     printf "      --memory               Basic memory usage metrics\n"
     printf "  -M, --memorytree           Extended memory usage metrics\n"
     printf "      --disk                 Disk usage metrics\n"
-    printf "      --network              Interfaces and IP addresses\n"
-    printf "      --alert                Reports whether metric thresholds are reached\n"
+    #printf "      --network              Interfaces and IP addresses\n"
+    printf "      --alert                Reports whether metric and temperature thresholds are reached\n"
     printf "      --baseupdates          Reports about available base system updates\n"
     printf "      --pkgupdates           Reports about available package updates\n"
     printf "      --pkgaudit             Reports about known package vulnerabilities\n"
@@ -597,6 +602,7 @@ option_help() {
     printf "  -c, --cli (default)        Output [feature] to command line\n"
     printf "  -l, --logger               Output [feature] to logger\n"
     printf "  -t, --telegram             Output [feature] to Telegram\n\n"
+    #printf "  -m, --mail                 Output [feature] to mail\n\n"
     printf "%bOptions:%b\n" "${BOLD}" "${NC}"
     printf "  --cron                     Effectuate cron changes from serverbot config\n"
     printf "  --help                     Display this help and exit\n"
@@ -608,12 +614,12 @@ option_cron() {
     requirement_root
 
     # cronjob creation will only work when the cron variables are set in serverbot.conf
-    printf "[0] Check if /usr/local/etc/serverbot.conf exists\n"
-    if [ -f /usr/local/etc/serverbot.conf ]; then
-        printf " >  found /usr/local/etc/serverbot.conf\n"
+    printf "[0] Check whether serverbot.conf exists\n"
+    if [ -f "${SERVERBOT_CONFIGURATION}" ]; then
+        printf " >  found ${SERVERBOT_CONFIGURATION}\n"
     else
-        printf " >  /usr/local/etc/serverbot.conf does not exist, aborting\n"
-        program_error 'automated cronjob creation requires the /usr/local/etc/serverbot.conf configuration file with the FEATURE_CRON variables set'
+        printf " >  "${SERVERBOT_CONFIGURATION}" does not exist, aborting\n"
+        program_error "automated cronjob creation requires the ${SERVERBOT_CONFIGURATION} configuration file with the FEATURE_CRON variables set"
     fi
     # check whether automated feature is enabled
     # then check whether the corresponding cron parameter has been set in serverbot.conf
@@ -627,7 +633,7 @@ option_cron() {
             option_cron_validate "SUMMARY_CRON" "${SUMMARY_CRON}"
         else
             printf " >  SUMMARY_CRON is not set\n"
-            program_error 'SUMMARY_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "SUMMARY_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping SUMMARY_CRON (disabled)\n"
@@ -639,7 +645,7 @@ option_cron() {
             option_cron_validate "OVERVIEW_CRON" "${OVERVIEW_CRON}"
         else
             printf " >  OVERVIEW_CRON is not set\n"
-            program_error 'OVERVIEW_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "OVERVIEW_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping OVERVIEW_CRON (disabled)\n"
@@ -651,7 +657,7 @@ option_cron() {
             option_cron_validate "ALERT_CRON" "${ALERT_CRON}"
         else
             printf " >  ALERT_CRON is not set\n"
-            program_error 'ALERT_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "ALERT_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping ALERT_CRON (disabled)\n"
@@ -663,7 +669,7 @@ option_cron() {
             option_cron_validate "BASE_UPDATES_CRON" "${BASE_UPDATES_CRON}"
         else
             printf " >  BASE_UPDATES_CRON is not set\n"
-            program_error 'BASE_UPDATES_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "BASE_UPDATES_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping BASE_UPDATES_CRON (disabled)\n"
@@ -675,7 +681,7 @@ option_cron() {
             option_cron_validate "PKG_UPDATES_CRON" "${PKG_UPDATES_CRON}"
         else
             printf " >  PKG_UPDATES_CRON is not set\n"
-            program_error 'PKG_UPDATES_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "PKG_UPDATES_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping PKG_UPDATES_CRON (disabled)\n"
@@ -687,7 +693,7 @@ option_cron() {
             option_cron_validate "PKG_AUDIT_CRON" "${PKG_AUDIT_CRON}"
         else
             printf " >  PKG_AUDIT_CRON is not set\n"
-            program_error 'PKG_AUDIT_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "PKG_AUDIT_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping PKG_AUDIT_CRON (disabled)\n"
@@ -699,7 +705,7 @@ option_cron() {
             option_cron_validate "PKG_CHECKSUM_CRON" "${PKG_CHECKSUM_CRON}"
         else
             printf " >  PKG_CHECKSUM_CRON is not set\n"
-            program_error 'PKG_CHECKSUM_CRON not set in /usr/local/etc/serverbot.conf'
+            program_error "PKG_CHECKSUM_CRON not set in ${SERVERBOT_CONFIGURATION}"
         fi
     else
         printf " >  Skipping PKG_CHECKSUMS_CRON (disabled)\n"
@@ -707,12 +713,12 @@ option_cron() {
     if [ "${CRON_ERROR}" = '1' ]; then
         program_error 'cron configuration must be valid'
     else
-        printf " >  All CRON entries in /usr/local/etc/serverbot.conf are valid\n"
+        printf " >  All CRON entries in ${SERVERBOT_CONFIGURATION} are valid\n"
     fi
     # old cronjob file can only be removed when it exists
     printf "[2] Removing old serverbot cronjob\n"
-    if [ -f /etc/cron.d/serverbot ]; then
-        rm -f /etc/cron.d/serverbot
+    if [ -f "${SERVERBOT_CRONFILE}" ]; then
+        rm -f "${SERVERBOT_CRONFILE}"
         printf " >  Done\n"
     else
         printf "    Cronjob file not found, skipping removal"
@@ -724,91 +730,91 @@ option_cron() {
     else
         # add cronjob for each activated automated task 
         printf "[3] Adding configured automated tasks for features:\n"
-        printf "# This cronjob manages automated serverbot features\n" > /etc/cron.d/serverbot
+        printf "# This cronjob manages automated serverbot features\n" > "${SERVERBOT_CRONFILE}"
         # feature summary
         if [ "${AUTOMATED_SUMMARY_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  SUMMARY on cron schedule %s\n" "${SUMMARY_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --summary " "${SUMMARY_CRON}" >> /etc/cron.d/serverbot
+            printf " >  SUMMARY    with cron schedule %s\n" "${SUMMARY_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --summary " "${SUMMARY_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_SUMMARY_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_SUMMARY_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
         # feature overview
         if [ "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  OVERVIEW on cron schedule %s\n" "${OVERVIEW_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --overview " "${OVERVIEW_CRON}" >> /etc/cron.d/serverbot
+            printf " >  OVERVIEW    with cron schedule %s\n" "${OVERVIEW_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --overview " "${OVERVIEW_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_OVERVIEW_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_OVERVIEW_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
         # feature alert
         if [ "${AUTOMATED_ALERT_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  ALERT on cron schedule %s\n" "${ALERT_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --alert " "${ALERT_CRON}" >> /etc/cron.d/serverbot
+            printf " >  ALERT       with cron schedule %s\n" "${ALERT_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --alert " "${ALERT_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_ALERT_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_ALERT_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
         # feature baseupdates
         if [ "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  BASEUPDATES feature on cron schedule %s\n" "${BASE_UPDATES_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --baseupdates " "${BASE_UPDATES_CRON}" >> /etc/cron.d/serverbot
+            printf " >  BASEUPDATES with cron schedule %s\n" "${BASE_UPDATES_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --baseupdates " "${BASE_UPDATES_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_BASEUPDATES_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_BASEUPDATES_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
         # feature pkgupdates
         if [ "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  PKGUPDATES feature on cron schedule %s\n" "${PKG_UPDATES_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --pkgupdates " "${PKG_UPDATES_CRON}" >> /etc/cron.d/serverbot
+            printf " >  PKGUPDATES  with cron schedule %s\n" "${PKG_UPDATES_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --pkgupdates " "${PKG_UPDATES_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_PKGUPDATES_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_PKGUPDATES_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
         # feature pkgaudit
         if [ "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  PKGAUDIT feature on cron schedule %s\n" "${PKG_AUDIT_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --pkgaudit " "${PKG_AUDIT_CRON}" >> /etc/cron.d/serverbot
+            printf " >  PKGAUDIT    with cron schedule %s\n" "${PKG_AUDIT_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --pkgaudit " "${PKG_AUDIT_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_PKGAUDIT_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_PKGAUDIT_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
         # feature pkgchecksum
         if [ "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  PKGCHECKSUM feature on cron schedule %s\n" "${PKG_CHECKSUM_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --pkgchecksum " "${PKG_CHECKSUM_CRON}" >> /etc/cron.d/serverbot
+            printf " >  PKGCHECKSUM with cron schedule %s\n" "${PKG_CHECKSUM_CRON}"
+            printf "\n%s root /usr/local/bin/serverbot --pkgchecksum " "${PKG_CHECKSUM_CRON}" >> "${SERVERBOT_CRONFILE}"
             if [ "${CONFIG_PKGCHECKSUM_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> /etc/cron.d/serverbot
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
             fi
             if [ "${CONFIG_PKGCHECKSUM_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> /etc/cron.d/serverbot
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
             fi
         fi
-        # add some white lines to the end
-        printf " \n\n" >> /etc/cron.d/serverbot
+        # add some empty lines to the end
+        printf " \n\n" >> "${SERVERBOT_CRONFILE}"
         # change ownership of cronjob file so users without administrative privileges cannot edit it
         printf "[4] Changing cronjob owner and group to root:wheel\n"
-        chown root:wheel /etc/cron.d/serverbot
+        chown root:wheel "${SERVERBOT_CRONFILE}"
         printf " >  Done\n"
-        printf "\nAll done! The new schedule can be found in /etc/cron.d/serverbot.\n"
+        printf "\nAll done! The new schedule can be found in ${SERVERBOT_CRONFILE}.\n"
     fi
     exit 0
 }
@@ -891,7 +897,12 @@ convert_bytes_to_human_readable_disk() {
 
 gather_information_server() {
     # gather specific system information for finer control over the method messages
-    FREEBSD_INSTALLED_VERSION="$(freebsd-version -k)"
+    # jails don't have kernels and freebsd-update -k will give an error
+    if [ "$(sysctl -n security.jail.jailed)" = '0' ]; then
+        FREEBSD_INSTALLED_VERSION="$(freebsd-version -k)"
+    elif [ "$(sysctl -n security.jail.jailed)" = '1' ]; then
+        FREEBSD_INSTALLED_VERSION='this is a jail'
+    fi
     FREEBSD_RUNNING_VERSION="$(freebsd-version -r)"
     FREEBSD_USERLAND_VERSION="$(freebsd-version -u)"
     HOSTNAME="$(uname -n)"
@@ -1126,8 +1137,8 @@ gather_metrics_disk() {
         ROOT_PARTITION_USED_PERCENTAGE="$((100 * ROOT_PARTITION_USED_B / ROOT_PARTITION_SIZE_B))"
         ROOT_PARTITION_FREE_PERCENTAGE="$((100 * ROOT_PARTITION_FREE_B / ROOT_PARTITION_SIZE_B))"
     else
-        # this function gathers root partition metrics with help from df. posix mode is used
-        # for compatibility purposes
+        # this function gathers root partition metrics with help from df
+        # posix mode is used for compatibility purposes
         ROOT_PARTITION_SIZE_512="$(df -P / | sed -n '2 p' | awk '{printf $4}')"
         ROOT_PARTITION_SIZE_B="$((ROOT_PARTITION_SIZE_512 * 512))"
         ROOT_PARTITION_USED_512="$(df -P / | sed -n '2 p' | awk '{printf $3}')"
