@@ -1,6 +1,13 @@
 # Changelog
 This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for code. For pre-release versions the `-DEVELOPMENT` identifier is used. For release versions the `-RELEASE` identifier is used.
 
+### 1.9.0-RELEASE ([02-02-2024](https://codeberg.org/nozel/serverbot/commit/b5a787fb85f81115ab3418a15d27385609e1461a))
+- Made cron file location variable #97.
+- Made serverbot.conf location variable #80.
+- Made cron option more readable and consistent #96.
+- Added a section for file handling #95.
+- Kernel version now distinguishes between jails and non-jails #88.
+
 ### 1.8.0-RELEASE ([31-01-2024](https://codeberg.org/nozel/serverbot/commit/88f4cc17b6e056a9372bedd6cba8cae14021cfa9))
 - Added CPU temperature for Intel and AMD processors to feature alert #19.
 - Changed copyright years to first year instead of last #92.
