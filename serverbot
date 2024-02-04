@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.9.0-RELEASE (02-02-2024)
+# Version 1.10.0-RELEASE (04-02-2024)
 #############################################################################
 
 #############################################################################
@@ -34,8 +34,8 @@
 #############################################################################
 
 # version and date
-SERVERBOT_VERSION='1.9.0'
-SERVERBOT_VERSION_DATE='02-02-2024'
+SERVERBOT_VERSION='1.10.0'
+SERVERBOT_VERSION_DATE='04-02-2024'
 
 # file locations
 SERVERBOT_CONFIGURATION='/usr/local/etc/serverbot.conf'
@@ -49,13 +49,10 @@ NC='\033[0;0m'
 BOLD='\033[1m'
 YELLOW='\033[1;33m'
 LRED='\033[1;31m'
-#UNDER='\033[4m'
-#WHITE='\033[1;37m'
-#RED='\033[0;31m'
-#GREEN='\033[0;32m'
-#LGREEN='\033[1;32m'
+LGREEN='\033[1;32m'
 #LMAGENTA='\033[1;35m'
 #LCYAN='\033[1;36m'
+#WHITE='\033[1;37m'
 
 #############################################################################
 # CONFIGURATION FILE HANDLING
@@ -105,6 +102,12 @@ if [ -f "${SERVERBOT_CONFIGURATION}" ]; then
     else
         CONFIG_SMT_ENABLE='0'
     fi
+    if [ "${ZFS_ENABLE}" = 'yes' ] || [ "${ZFS_ENABLE}" = 'YES' ]; then
+        CONFIG_ZFS_ENABLE='1'
+    else
+        CONFIG_ZFS_ENABLE='0'
+    fi
+    # alert configuration
     if [ "${LOAD_INTERVAL}" = '1' ]; then
         CONFIG_LOAD_INTERVAL='1'
     elif [ "${LOAD_INTERVAL}" = '5' ]; then
@@ -114,12 +117,6 @@ if [ -f "${SERVERBOT_CONFIGURATION}" ]; then
     else
         CONFIG_LOAD_INTERVAL='15'
     fi
-    if [ "${ZFS_ENABLE}" = 'yes' ] || [ "${ZFS_ENABLE}" = 'YES' ]; then
-        CONFIG_ZFS_ENABLE='1'
-    else
-        CONFIG_ZFS_ENABLE='0'
-    fi
-    # alert configuration
     if [ "${THRESHOLD_LOAD}" -lt '0' ]; then
         CONFIG_THRESHOLD_LOAD='95'
     elif [ "${THRESHOLD_LOAD}" -gt '0' ]; then
@@ -313,11 +310,9 @@ AUTOMATED_PKGCHECKSUM_TASKS_COMBINED="$((CONFIG_PKGCHECKSUM_LOGGER + CONFIG_PKGC
 ####################################################################################################
 
 # populate validation variables with zeros for validation
-ARGUMENT_OPTION='0'
 ARGUMENT_VERSION='0'
 ARGUMENT_HELP='0'
 ARGUMENT_CRON='0'
-ARGUMENT_FEATURE='0'
 ARGUMENT_BASIC='0'
 ARGUMENT_SUMMARY='0'
 ARGUMENT_OVERVIEW='0'
@@ -332,7 +327,6 @@ ARGUMENT_BASEUPDATES='0'
 ARGUMENT_PKGUPDATES='0'
 ARGUMENT_PKGAUDIT='0'
 ARGUMENT_PKGCHECKSUM='0'
-ARGUMENT_METHOD='0'
 ARGUMENT_CLI='0'
 ARGUMENT_LOGGER='0'
 ARGUMENT_TELEGRAM='0'
@@ -343,123 +337,103 @@ while test -n "$1"; do
         # options
         --version|-version|version|--v|-v)
             ARGUMENT_VERSION='1'
-            ARGUMENT_OPTION='1'
             shift
             ;;
 
         --help|-help|help|--h|-h)
             ARGUMENT_HELP='1'
-            ARGUMENT_OPTION='1'
             shift
             ;;
         
         --cron|-cron|cron)
             ARGUMENT_CRON='1'
-            ARGUMENT_OPTION='1'
             shift
             ;;
 
         # features
         --basic|basic|-b)
             ARGUMENT_BASIC='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --summary|summary|-s)
             ARGUMENT_SUMMARY='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --overview|overview|-o)
             ARGUMENT_OVERVIEW='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --uptime|uptime)
             ARGUMENT_UPTIME='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --cpu|cpu|processor)
             ARGUMENT_CPU='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --memory|memory|ram)
             ARGUMENT_MEMORY='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --memorytree|memorytree|-M)
             ARGUMENT_MEMORYTREE='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --disk|disk|hdd|ssd)
             ARGUMENT_DISK='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --network|network)
             ARGUMENT_NETWORK='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --alert|alert|-a)
             ARGUMENT_ALERT='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --baseupdates|baseupdates)
             ARGUMENT_BASEUPDATES='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --pkgupdates|pkgupdates)
             ARGUMENT_PKGUPDATES='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --pkgaudit|pkgaudit)
             ARGUMENT_PKGAUDIT='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         --pkgchecksum|pkgchecksum)
             ARGUMENT_PKGCHECKSUM='1'
-            ARGUMENT_FEATURE='1'
             shift
             ;;
 
         # methods
         --cli|cli|-c)
             ARGUMENT_CLI='1'
-            ARGUMENT_METHOD='1'
             shift
             ;;
 
         --logger|logger|-l)
             ARGUMENT_LOGGER='1'
-            ARGUMENT_METHOD='1'
             shift
             ;;
 
         --telegram|telegram|-t)
             ARGUMENT_TELEGRAM='1'
-            ARGUMENT_METHOD='1'
             shift
             ;;
 
@@ -488,7 +462,6 @@ requirement_root() {
     # show error if updatebot isn't run with root privileges
     if [ "$(id -u)" -ne '0' ]; then
         program_error 'this feature must be run with root privileges'
-        exit 1
     fi
 }
 
@@ -496,7 +469,6 @@ requirement_os() {
     # show error if freebsd-version cannot be found
     if [ ! "$(command -v freebsd-version)" ]; then
         program_error 'operating system is not supported'
-        exit 1
     fi
 }
 
@@ -508,6 +480,11 @@ requirement_curl() {
 }
 
 serverbot_argument_validate() {
+    # # populate validation variables with zeros for validation
+    ARGUMENT_OPTIONS_COMBINED='0'
+    ARGUMENT_FEATURES_COMBINED='0'
+    ARGUMENT_METHODS_COMBINED='0'
+
     # combine argument categories
     ARGUMENT_OPTIONS_COMBINED="$((ARGUMENT_VERSION + ARGUMENT_HELP + ARGUMENT_CRON))"
     ARGUMENT_FEATURES_COMBINED="$((ARGUMENT_BASIC + ARGUMENT_SUMMARY + ARGUMENT_OVERVIEW + ARGUMENT_UPTIME + ARGUMENT_CPU + ARGUMENT_MEMORY + ARGUMENT_MEMORYTREE + ARGUMENT_DISK + ARGUMENT_NETWORK + ARGUMENT_ALERT + ARGUMENT_BASEUPDATES + ARGUMENT_PKGUPDATES + ARGUMENT_PKGAUDIT + ARGUMENT_PKGCHECKSUM))"
@@ -529,40 +506,8 @@ serverbot_argument_validate() {
     elif [ "${ARGUMENT_OPTIONS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ]; then
         program_error 'options and methods cannot be used at the same time'
     # validate whether a method is used without a feature and return error if this is the case
-    elif [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_FEATURE}" = '0' ]; then
+    elif [ "${ARGUMENT_METHODS_COMBINED}" -ge '1' ] && [ "${ARGUMENT_FEATURES_COMBINED}" = '0' ]; then
         program_error 'a feature must be used when a method is used'
-    fi
-}
-
-option_cron_validate() {
-    CRON_NAME="${1}"
-    CRON="${2}"
-    # validate whether cron entry consists of allowed characters
-    
-    case "$CRON" in
-        (*[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'!@#$%^&()_+=[]{}\|;:",.<>?']*)
-            #CRON_VALIDATE_CHARACTERS='1'
-            #CRON_VALIDATE_CHARACTERS_ERROR='0'
-            CRON_ERROR='1'
-            printf " >   [!] unsupported characters\n"
-            ;;
-        (*)
-            #CRON_VALIDATE_CHARACTERS='0'
-            #CRON_VALIDATE_CHARACTERS_ERROR='1'
-            printf " >   [i] supported characters%s\n"
-            ;;
-    esac
-
-    # validate whether cron entry consists of 5 substrings
-    if [ "$(printf "%s" "${CRON}" | awk -F' ' '{print NF}')" -eq 5 ]; then
-        #CRON_VALIDATE_SUBSTRINGS='1'
-        #CRON_VALIDATE_SUBSTRINGS_ERROR='0'
-        printf " >   [i] supported format\n"
-    else
-        #CRON_VALIDATE_SUBSTRINGS='0'
-        #CRON_VALIDATE_SUBSTRINGS_ERROR='1'
-        CRON_ERROR='1'
-        printf " >   [!] unsuported format\n"
     fi
 }
 
@@ -578,12 +523,12 @@ option_version() {
 }
 
 option_help() {
-    printf "%bUsage:%b\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [feature]%b                    # No explicit method defaults to method cli\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [feature] [method]%b           # Only one feature can be used at a time\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [feature] [method] [method]%b  # Multiple methods can be used at once\n" "${BOLD}" "${NC}"
-    printf "%b  serverbot [option]%b\n\n" "${BOLD}" "${NC}"
-    printf "%bFeatures:%b\n" "${BOLD}" "${NC}"
+    printf "Usage:\n"
+    printf "  serverbot [feature]                    # No explicit method defaults to method cli\n"
+    printf "  serverbot [feature] [method]           # Only one feature can be used at a time\n"
+    printf "  serverbot [feature] [method] [method]  # Multiple methods can be used at once\n"
+    printf "  serverbot [option]\n\n"
+    printf "Features:\n"
     printf "  -b, --basic                Basic server information\n"
     printf "  -s, --summary              Server metrics overview\n"
     printf "  -o, --overview             Extended server overview\n"
@@ -598,12 +543,12 @@ option_help() {
     printf "      --pkgupdates           Reports about available package updates\n"
     printf "      --pkgaudit             Reports about known package vulnerabilities\n"
     printf "      --pkgchecksum          Reports about mismatching package checksums\n\n"
-    printf "%bMethods:%b\n" "${BOLD}" "${NC}"
+    printf "Methods:\n"
     printf "  -c, --cli (default)        Output [feature] to command line\n"
     printf "  -l, --logger               Output [feature] to logger\n"
     printf "  -t, --telegram             Output [feature] to Telegram\n\n"
     #printf "  -m, --mail                 Output [feature] to mail\n\n"
-    printf "%bOptions:%b\n" "${BOLD}" "${NC}"
+    printf "Options:\n"
     printf "  --cron                     Effectuate cron changes from serverbot config\n"
     printf "  --help                     Display this help and exit\n"
     printf "  --version                  Display version information and exit\n"
@@ -613,107 +558,84 @@ option_help() {
 option_cron() {
     requirement_root
 
+    option_cron_validate_schedule() {
+        # validate whether cron job schedule consists of allowed characters
+        case "${1}" in
+            (*[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'!@#$%^&()_+=[]{}\|;:",.<>?']*)
+                CRON_ERROR='1'
+                printf " >   [!] unsupported characters\n"
+                ;;
+            (*)
+                printf " >   [i] supported characters\n"
+                ;;
+        esac
+        # validate whether cron job schedule consists of 5 substrings
+        if [ "$(printf "%s" "${1}" | awk -F' ' '{print NF}')" -eq 5 ]; then
+            printf " >   [i] supported format\n"
+        else
+            CRON_ERROR='1'
+            printf " >   [!] unsuported format\n"
+        fi
+    }
+
+    option_cron_check_configuration() {
+        # first check whether a automated feature is enabled
+        if [ "${1}" -ge '1' ]; then
+            # then check whether the corresponding cron parameter has been set in serverbot.conf
+            if [ "${2}" -eq '1' ]; then
+                # then validate the cron parameter and report any issues
+                printf " >  Validating %s (enabled)\n" "${4}"
+                option_cron_validate_schedule "${3}"
+            else
+                # finally abort when issues are found
+                printf " >  %s is not set\n" "${4}"
+                program_error "${4} not set in ${SERVERBOT_CONFIGURATION}"
+            fi
+        else
+            # skip check if feature is disabled
+            printf " >  Skipping %s (disabled)\n" "${4}"
+        fi
+    }
+
+    option_cron_add_job() {
+        # first check whether a automated feature is enabled
+        if [ "${1}" -ge '1' ]; then
+            # then write cron job to the cron file if the automated feature is enabled
+            printf " >  %s with cron schedule %s\n" "${5}" "${4}" 
+            printf "\n%s root /usr/local/bin/serverbot --%s " "${4}" "${6}" >> "${SERVERBOT_CRONFILE}"
+            # add method logger if it is enabled
+            if [ "${2}" -eq '1' ]; then
+                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
+            fi
+            # add method telegram if it is enabled
+            if [ "${3}" -eq '1' ]; then
+                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
+            fi
+        fi
+    }
+
     # cronjob creation will only work when the cron variables are set in serverbot.conf
     printf "[0] Check whether serverbot.conf exists\n"
     if [ -f "${SERVERBOT_CONFIGURATION}" ]; then
-        printf " >  found ${SERVERBOT_CONFIGURATION}\n"
+        printf " >  found %s\n" "${SERVERBOT_CONFIGURATION}"
     else
-        printf " >  "${SERVERBOT_CONFIGURATION}" does not exist, aborting\n"
-        program_error "automated cronjob creation requires the ${SERVERBOT_CONFIGURATION} configuration file with the FEATURE_CRON variables set"
+        printf " >  %s does not exist, aborting\n" "${SERVERBOT_CONFIGURATION}"
+        program_error "automated cronjob creation requires the ${SERVERBOT_CONFIGURATION} configuration file with the FEATURE_CRON variable(s) set"
     fi
-    # check whether automated feature is enabled
-    # then check whether the corresponding cron parameter has been set in serverbot.conf
-    # then validate the cron parameter and report any issues
-    # finally abort when issues are found
-    # feature summary
+    # check each feature's configuration and validate cron job schedule
     printf "[1] Checking cron configuration validity\n"
-    if [ "${AUTOMATED_SUMMARY_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_SUMMARY_CRON}" -eq '1' ]; then
-            printf " >  Validating SUMMARY_CRON (enabled)\n"
-            option_cron_validate "SUMMARY_CRON" "${SUMMARY_CRON}"
-        else
-            printf " >  SUMMARY_CRON is not set\n"
-            program_error "SUMMARY_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping SUMMARY_CRON (disabled)\n"
-    fi
-    # feature overview
-    if [ "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_OVERVIEW_CRON}" -eq '1' ]; then
-            printf " >  Validating OVERVIEW_CRON (enabled)\n"
-            option_cron_validate "OVERVIEW_CRON" "${OVERVIEW_CRON}"
-        else
-            printf " >  OVERVIEW_CRON is not set\n"
-            program_error "OVERVIEW_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping OVERVIEW_CRON (disabled)\n"
-    fi
-    # feature alert
-    if [ "${AUTOMATED_ALERT_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_ALERT_CRON}" -eq '1' ]; then
-            printf " >  Validating ALERT_CRON (enabled)\n"
-            option_cron_validate "ALERT_CRON" "${ALERT_CRON}"
-        else
-            printf " >  ALERT_CRON is not set\n"
-            program_error "ALERT_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping ALERT_CRON (disabled)\n"
-    fi
-    # feature baseupdates
-    if [ "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_BASEUPDATES_CRON}" -eq '1' ]; then
-            printf " >  Validating BASE_UPDATES_CRON (enabled)\n"
-            option_cron_validate "BASE_UPDATES_CRON" "${BASE_UPDATES_CRON}"
-        else
-            printf " >  BASE_UPDATES_CRON is not set\n"
-            program_error "BASE_UPDATES_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping BASE_UPDATES_CRON (disabled)\n"
-    fi
-    # feature pkgupdates
-    if [ "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_PKGUPDATES_CRON}" -eq '1' ]; then
-            printf " >  Validating PKG_UPDATES_CRON (enabled)\n"
-            option_cron_validate "PKG_UPDATES_CRON" "${PKG_UPDATES_CRON}"
-        else
-            printf " >  PKG_UPDATES_CRON is not set\n"
-            program_error "PKG_UPDATES_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping PKG_UPDATES_CRON (disabled)\n"
-    fi
-    # feature pkgaudit
-    if [ "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_PKGAUDIT_CRON}" -eq '1' ]; then
-            printf " >  Validating PKG_AUDIT_CRON (enabled)\n"
-            option_cron_validate "PKG_AUDIT_CRON" "${PKG_AUDIT_CRON}"
-        else
-            printf " >  PKG_AUDIT_CRON is not set\n"
-            program_error "PKG_AUDIT_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping PKG_AUDIT_CRON (disabled)\n"
-    fi
-    # feature pkgchecksum
-    if [ "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" -ge '1' ]; then
-        if [ "${CONFIG_PKGCHECKSUM_CRON}" -eq '1' ]; then
-            printf " >  Validating PKG_CHECKSUM_CRON (enabled)\n"
-            option_cron_validate "PKG_CHECKSUM_CRON" "${PKG_CHECKSUM_CRON}"
-        else
-            printf " >  PKG_CHECKSUM_CRON is not set\n"
-            program_error "PKG_CHECKSUM_CRON not set in ${SERVERBOT_CONFIGURATION}"
-        fi
-    else
-        printf " >  Skipping PKG_CHECKSUMS_CRON (disabled)\n"
-    fi
+    option_cron_check_configuration "${AUTOMATED_SUMMARY_TASKS_COMBINED}" "${CONFIG_SUMMARY_CRON}" "${SUMMARY_CRON}" "SUMMARY_CRON"
+    option_cron_check_configuration "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" "${CONFIG_OVERVIEW_CRON}" "${OVERVIEW_CRON}" "OVERVIEW_CRON"
+    option_cron_check_configuration "${AUTOMATED_ALERT_TASKS_COMBINED}" "${CONFIG_ALERT_CRON}" "${ALERT_CRON}" "ALERT_CRON"
+    option_cron_check_configuration "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" "${CONFIG_BASEUPDATES_CRON}" "${BASE_UPDATES_CRON}" "BASEUPDATES_CRON"
+    option_cron_check_configuration "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" "${CONFIG_PKGUPDATES_CRON}" "${PKG_UPDATES_CRON}" "SUMMARY_CRON"
+    option_cron_check_configuration "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" "${CONFIG_PKGAUDIT_CRON}" "${PKG_AUDIT_CRON}" "PKGAUDIT_CRON"
+    option_cron_check_configuration "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" "${CONFIG_PKGCHECKSUM_CRON}" "${PKG_CHECKSUM_CRON}" "PKGCHECKSUM_CRON"
+    # abort option cron when a cron job schedule error has been found
     if [ "${CRON_ERROR}" = '1' ]; then
         program_error 'cron configuration must be valid'
     else
-        printf " >  All CRON entries in ${SERVERBOT_CONFIGURATION} are valid\n"
+        printf " >  All CRON entries in %s are valid\n" "${SERVERBOT_CONFIGURATION}"
     fi
     # old cronjob file can only be removed when it exists
     printf "[2] Removing old serverbot cronjob\n"
@@ -723,7 +645,7 @@ option_cron() {
     else
         printf "    Cronjob file not found, skipping removal"
     fi
-    # if there are no activated automated tasks then they do not have to be added to the cronjob
+    # if there are no activated automated tasks then no automated task has to be created
     if [ "${AUTOMATED_TASKS_COMBINED}" -eq '0' ]; then
         printf "[3] No automated tasks to add\n"
         printf " >  All done!\n"
@@ -731,90 +653,23 @@ option_cron() {
         # add cronjob for each activated automated task 
         printf "[3] Adding configured automated tasks for features:\n"
         printf "# This cronjob manages automated serverbot features\n" > "${SERVERBOT_CRONFILE}"
-        # feature summary
-        if [ "${AUTOMATED_SUMMARY_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  SUMMARY    with cron schedule %s\n" "${SUMMARY_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --summary " "${SUMMARY_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_SUMMARY_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_SUMMARY_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
-        # feature overview
-        if [ "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  OVERVIEW    with cron schedule %s\n" "${OVERVIEW_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --overview " "${OVERVIEW_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_OVERVIEW_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_OVERVIEW_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
-        # feature alert
-        if [ "${AUTOMATED_ALERT_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  ALERT       with cron schedule %s\n" "${ALERT_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --alert " "${ALERT_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_ALERT_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_ALERT_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
-        # feature baseupdates
-        if [ "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  BASEUPDATES with cron schedule %s\n" "${BASE_UPDATES_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --baseupdates " "${BASE_UPDATES_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_BASEUPDATES_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_BASEUPDATES_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
-        # feature pkgupdates
-        if [ "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  PKGUPDATES  with cron schedule %s\n" "${PKG_UPDATES_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --pkgupdates " "${PKG_UPDATES_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_PKGUPDATES_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_PKGUPDATES_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
-        # feature pkgaudit
-        if [ "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  PKGAUDIT    with cron schedule %s\n" "${PKG_AUDIT_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --pkgaudit " "${PKG_AUDIT_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_PKGAUDIT_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_PKGAUDIT_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
-        # feature pkgchecksum
-        if [ "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" -ge '1' ]; then
-            printf " >  PKGCHECKSUM with cron schedule %s\n" "${PKG_CHECKSUM_CRON}"
-            printf "\n%s root /usr/local/bin/serverbot --pkgchecksum " "${PKG_CHECKSUM_CRON}" >> "${SERVERBOT_CRONFILE}"
-            if [ "${CONFIG_PKGCHECKSUM_LOGGER}" -eq '1' ]; then
-                printf "%slogger " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-            if [ "${CONFIG_PKGCHECKSUM_TELEGRAM}" -eq '1' ]; then
-                printf "%stelegram " "--" >> "${SERVERBOT_CRONFILE}"
-            fi
-        fi
+        option_cron_add_job "${AUTOMATED_SUMMARY_TASKS_COMBINED}" "${CONFIG_SUMMARY_LOGGER}" "${CONFIG_SUMMARY_TELEGRAM}" "${SUMMARY_CRON}" "SUMMARY    " "summary"
+        option_cron_add_job "${AUTOMATED_OVERVIEW_TASKS_COMBINED}" "${CONFIG_OVERVIEW_LOGGER}" "${CONFIG_OVERVIEW_TELEGRAM}" "${OVERVIEW_CRON}" "OVERVIEW   " "overview"
+        option_cron_add_job "${AUTOMATED_ALERT_TASKS_COMBINED}" "${CONFIG_ALERT_LOGGER}" "${CONFIG_ALERT_TELEGRAM}" "${ALERT_CRON}" "ALERT      " "alert"
+        option_cron_add_job "${AUTOMATED_BASEUPDATES_TASKS_COMBINED}" "${CONFIG_BASEUPDATES_LOGGER}" "${CONFIG_BASEUPDATES_TELEGRAM}" "${BASE_UPDATES_CRON}" "BASEUPDATES" "baseupdates"
+        option_cron_add_job "${AUTOMATED_PKGUPDATES_TASKS_COMBINED}" "${CONFIG_PKGUPDATES_LOGGER}" "${CONFIG_PKGUPDATES_TELEGRAM}" "${PKG_UPDATES_CRON}" "PKGUPDATES " "pkgupdates"
+        option_cron_add_job "${AUTOMATED_PKGAUDIT_TASKS_COMBINED}" "${CONFIG_PKGAUDIT_LOGGER}" "${CONFIG_PKGAUDIT_TELEGRAM}" "${PKG_AUDIT_CRON}" "PKGAUDIT   " "pkgaudit"
+        option_cron_add_job "${AUTOMATED_PKGCHECKSUM_TASKS_COMBINED}" "${CONFIG_PKGCHECKSUM_LOGGER}" "${CONFIG_PKGCHECKSUM_TELEGRAM}" "${PKG_CHECKSUM_CRON}" "PKGCHECKSUM" "pkgchecksum"
         # add some empty lines to the end
         printf " \n\n" >> "${SERVERBOT_CRONFILE}"
         # change ownership of cronjob file so users without administrative privileges cannot edit it
-        printf "[4] Changing cronjob owner and group to root:wheel\n"
+        printf "[4] Changing cronjob file owner and group to root:wheel\n"
         chown root:wheel "${SERVERBOT_CRONFILE}"
         printf " >  Done\n"
-        printf "\nAll done! The new schedule can be found in ${SERVERBOT_CRONFILE}.\n"
+        printf "[5] Changing cronjob file permissions to 555\n"
+        chmod 555 "${SERVERBOT_CRONFILE}"
+        printf " >  Done\n"
+        printf "\nAll done! The new schedule can be found in %s.\n" "${SERVERBOT_CRONFILE}"
     fi
     exit 0
 }
@@ -911,6 +766,39 @@ gather_information_server() {
 }
 
 gather_metrics_uptime() {
+    # determine single or plural for time units
+    gather_metrics_uptime_check_days() {
+        if [ "${UPTIME_DAY}" -eq '1' ]; then
+            DAY="${UPTIME_DAY} day"
+        else
+            DAY="${UPTIME_DAY} days"
+        fi
+    }
+
+    gather_metrics_uptime_check_hours() {
+        if [ "${UPTIME_HOUR}" -eq '1' ]; then
+            HOUR="${UPTIME_HOUR} hour"
+        else
+            HOUR="${UPTIME_HOUR} hours"
+        fi
+    }
+
+    gather_metrics_uptime_check_minutes() {
+        if [ "${UPTIME_MIN}" -eq '1' ]; then
+            MIN="${UPTIME_MIN} minute"
+        else
+            MIN="${UPTIME_MIN} minutes"
+        fi
+    }
+
+    gather_metrics_uptime_check_seconds() {
+        if [ "${UPTIME_SEC}" -eq '1' ]; then
+            SEC="${UPTIME_SEC} second"
+        else
+            SEC="${UPTIME_SEC} seconds"
+        fi
+    }
+
     # freebsd's uptime command is inflexible so serverbot generates its own uptime metrics from epoch
     EPOCH_TIME="$(date +%s)"
     EPOCH_UPTIME="$(sysctl kern.boottime | awk '{printf $5}' | tr -d ',')"
@@ -922,76 +810,34 @@ gather_metrics_uptime() {
     UPTIME_MIN="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED-UPTIME_HOUR_ROUNDED)/60))"
     UPTIME_MIN_ROUNDED="$((UPTIME_MIN*60))"
     UPTIME_SEC="$(((UPTIME_CALC-UPTIME_DAY_ROUNDED-UPTIME_HOUR_ROUNDED)-UPTIME_MIN_ROUNDED))"
-
-    # determine single or plural for time units
     if [ "${UPTIME_DAY}" -ge '1' ]; then
-        if [ "${UPTIME_DAY}" -eq '1' ]; then
-            DAY="${UPTIME_DAY} day"
-        else
-            DAY="${UPTIME_DAY} days"
-        fi
-        if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            HOUR="${UPTIME_HOUR} hour"
-        else
-            HOUR="${UPTIME_HOUR} hours"
-        fi
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            MIN="${UPTIME_MIN} minute"
-        else
-            MIN="${UPTIME_MIN} minutes"
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            SEC="${UPTIME_SEC} second"
-        else
-            SEC="${UPTIME_SEC} seconds"
-        fi
+        gather_metrics_uptime_check_days
+        gather_metrics_uptime_check_hours
+        gather_metrics_uptime_check_minutes
+        gather_metrics_uptime_check_seconds
         UPTIME_MESSAGE="${DAY} ${HOUR} ${MIN} ${SEC}"
     elif [ "${UPTIME_HOUR}" -ge '1' ]; then
-        if [ "${UPTIME_HOUR}" -eq '1' ]; then
-            HOUR="${UPTIME_HOUR} hour"
-        else
-            HOUR="${UPTIME_HOUR} hours"
-        fi
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            MIN="${UPTIME_MIN} minute"
-        else
-            MIN="${UPTIME_MIN} minutes"
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            SEC="${UPTIME_SEC} second"
-        else
-            SEC="${UPTIME_SEC} seconds"
-        fi
+        gather_metrics_uptime_check_hours
+        gather_metrics_uptime_check_minutes
+        gather_metrics_uptime_check_seconds
         UPTIME_MESSAGE="${HOUR} ${MIN} ${SEC}"
     elif [ "${UPTIME_MIN}" -ge '1' ]; then
-        if [ "${UPTIME_MIN}" -eq '1' ]; then
-            MIN="${UPTIME_MIN} minute"
-        else
-            MIN="${UPTIME_MIN} minutes"
-        fi
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            SEC="${UPTIME_SEC} second"
-        else
-            SEC="${UPTIME_SEC} seconds"
-        fi
+        gather_metrics_uptime_check_minutes
+        gather_metrics_uptime_check_seconds
         UPTIME_MESSAGE="${MIN} ${SEC}"
     elif [ "${UPTIME_SEC}" -ge '1' ]; then
-        if [ "${UPTIME_SEC}" -eq '1' ]; then
-            SEC="${UPTIME_SEC} second"
-        else
-            SEC="${UPTIME_SEC} seconds"
-        fi
+        gather_metrics_uptime_check_seconds
         UPTIME_MESSAGE="${SEC}"
     fi
 }
 
 gather_metrics_cpu() {
-    # $CPU_TOTAL_CORES is based on the number of threads available to the operating system. this
-    # can be misleading since simultaneous multithreading (SMT) effectively doubles the amount of
+    # CPU_TOTAL_CORES is based on the number of threads available to the operating system
+    # this can be misleading since simultaneous multithreading (SMT) effectively doubles the amount of
     # threads available to the operating system, while providing only a fraction of the performance
-    # of a real physical CPU core. SMT provides a efficiency boost at best, but with that in mind
-    # they get saturated quite fast and that's why we can still use them. you can set $SMT_ENABLE
-    # in serverbot.conf to 'yes' if you want serverbot to halve the amount of available threads.
+    # of a real physical CPU core
+    # SMT provides a efficiency boost at best, but with that in mind they can still be useful
+    # you can set SMT_ENABLE in serverbot.conf to 'YES' if you want serverbot to halve the amount of available threads
     if [ "${CONFIG_SMT_ENABLE}" = '1' ]; then
         CPU_TOTAL_CORES="$(($(sysctl -n hw.ncpu) / 2))"
     else
@@ -1002,11 +848,11 @@ gather_metrics_cpu() {
     # making calculations with the load metrics is easier this way
     CPU_MAXIMUM_LOAD_CALC="${CPU_TOTAL_CORES}00"
 
-    # load average is calculated over respectively 1, 5 and 15 minutes. a load average of 1.00 means
-    # that one CPU core is working 100% of the time. a load average of 2.00 means that two CPU cores
-    # can be saturated fully. on a single core CPU, this will mean that the cpu is overloaded by 100%
-    # and that processes will have to wait on each other. the practical real load of a system depends
-    # on the average load and the number of cores and threads in the CPU.
+    # system load average is calculated over respectively 1, 5 and 15 minutes.
+    # a load average of 1.00 means that one CPU core is working 100% of the time
+    # a load average of 2.00 means that two CPU cores can be saturated fully
+    # with a load average of 2.00, a single core CPU would be overloaded by 100%
+    # when overloaded, processes will have to wait on each other
     CPU_LOAD_AVERAGE_1MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $1}')"
     CPU_LOAD_AVERAGE_5MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $2}')"
     CPU_LOAD_AVERAGE_15MIN="$(sysctl -n vm.loadavg | tr -d '{}' | awk '{printf $3}')"
@@ -1018,16 +864,17 @@ gather_metrics_cpu() {
     CPU_LOAD_PERCENTAGE_5MIN="$((100*CPU_LOAD_AVERAGE_5MIN_CALC/CPU_MAXIMUM_LOAD_CALC))"
     CPU_LOAD_PERCENTAGE_15MIN="$((100*CPU_LOAD_AVERAGE_15MIN_CALC/CPU_MAXIMUM_LOAD_CALC))"
 
-    # one load average percentage will be used for reporting/alerting purposes. the load average interval can be
-    # configured by setting the $LOAD_INTERVAL variable in serverbot.conf. '15' minutes is the default
+    # one load average percentage will be used for reporting/alerting purposes
+    # the load average interval can be configured by setting the LOAD_INTERVAL variable in serverbot.conf
+    # '15' minutes is the default
     if [ "${CONFIG_LOAD_INTERVAL}" = '1' ]; then
-        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_1MIN_VIEW}"
+        CPU_LOAD_PERCENTAGE="${CPU_LOAD_PERCENTAGE_1MIN}"
     elif [ "${CONFIG_LOAD_INTERVAL}" = '5' ]; then
-        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_5MIN_VIEW}"
+        CPU_LOAD_PERCENTAGE="${CPU_LOAD_PERCENTAGE_5MIN}"
     elif [ "${CONFIG_LOAD_INTERVAL}" = '15' ]; then
-        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_15MIN_VIEW}"
+        CPU_LOAD_PERCENTAGE="${CPU_LOAD_PERCENTAGE_15MIN}"
     else
-        CPU_LOAD_PERCENTAGE_VIEW="${CPU_LOAD_PERCENTAGE_15MIN_VIEW}"
+        CPU_LOAD_PERCENTAGE="${CPU_LOAD_PERCENTAGE_15MIN}"
     fi
 }
 
@@ -1093,7 +940,7 @@ gather_metrics_memory() {
     MEMORY_FREE_PERCENTAGE="$((100 * MEMORY_FREE_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_USED_PERCENTAGE="$((100 * MEMORY_USED_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_USED_NOARC_PERCENTAGE="$((100 * MEMORY_USED_NOARC_B / MEMORY_TOTAL_B))"
-    MEMORY_UNUSED_PERCENTAGE="$((100 * MEMORY_UNUSED_COUNT / MEMORY_TOTAL_COUNT))"
+    #MEMORY_UNUSED_PERCENTAGE="$((100 * MEMORY_UNUSED_COUNT / MEMORY_TOTAL_COUNT))"
     MEMORY_UNUSED_ARC_PERCENTAGE="$((100 * MEMORY_UNUSED_ARC_B / MEMORY_TOTAL_B))"
     MEMORY_TOTAL_PERCENTAGE='100'
 
@@ -1119,8 +966,8 @@ gather_metrics_memory() {
     MEMORY_USED_VIEW="${MEMORY_VIEW}"
     convert_bytes_to_human_readable_memory "${MEMORY_USED_NOARC_B}"
     MEMORY_USED_NOARC_VIEW="${MEMORY_VIEW}"
-    convert_bytes_to_human_readable_memory "${MEMORY_UNUSED_B}"
-    MEMORY_UNUSED_VIEW="${MEMORY_VIEW}"
+    #convert_bytes_to_human_readable_memory "${MEMORY_UNUSED_B}"
+    #MEMORY_UNUSED_VIEW="${MEMORY_VIEW}"
     convert_bytes_to_human_readable_memory "${MEMORY_UNUSED_ARC_B}"
     MEMORY_UNUSED_ARC_VIEW="${MEMORY_VIEW}"
     convert_bytes_to_human_readable_memory "${MEMORY_TOTAL_B}"
@@ -1162,14 +1009,14 @@ gather_temperature_cpu() {
     # check whether CPU manufacturer is Intel, AMD or other
     # then check whether the corresponding device driver is loaded
     # if this is not the case, then load the device driver
-    if [ "$(sysctl hw.model | grep -i intel)" ]; then
+    if [ "$(sysctl hw.model | grep --ignore-case intel)" ]; then
         CPU_MANUFACTURER='intel'
-        if ! [ "$(kldstat | grep -i coretemp)" ]; then
+        if ! [ "$(kldstat | grep --ignore-case coretemp)" ]; then
             kldload -n coretemp
         fi
-    elif [ "$(sysctl hw.model | grep -i amd)" ]; then
+    elif [ "$(sysctl hw.model | grep --ignore-case amd)" ]; then
         CPU_MANUFACTURER='intel'
-        if ! [ "$(kldstat | grep -i amdtemp)" ]; then
+        if ! [ "$(kldstat | grep --ignore-case amdtemp)" ]; then
             kldload -n amdtemp
         fi
     else
@@ -1180,7 +1027,7 @@ gather_temperature_cpu() {
         CPU_TEMPERATURE='0'
         # iterate over CPU core temperatures and find the highest temperature value
         for temperature in $(sysctl dev.cpu | grep 'temperature' | cut -d ' ' -f2- | cut -d '.' -f1); do
-            if [ ${temperature} -gt ${CPU_TEMPERATURE} ]; then
+            if [ "${temperature}" -gt "${CPU_TEMPERATURE}" ]; then
                 CPU_TEMPERATURE="${temperature}"
             fi
         done
@@ -1231,8 +1078,8 @@ feature_basic() {
     gather_information_server
 
     if [ "${ARGUMENT_BASIC}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "%b%s%b\n" "${BOLD}" "${HOSTNAME}" "${NC}"
-        printf "%b%s%b\n" "${BOLD}" "${OPERATING_SYSTEM} ${FREEBSD_INSTALLED_VERSION} (${ARCHITECTURE})" "${NC}"
+        printf "%s\n" "${HOSTNAME}"
+        printf "%s\n" "${OPERATING_SYSTEM} ${FREEBSD_INSTALLED_VERSION} (${ARCHITECTURE})"
     fi
     if [ "${ARGUMENT_BASIC}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "${HOSTNAME}"
@@ -1276,12 +1123,12 @@ feature_overview() {
     gather_metrics_disk
 
     if [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "hostname            %b%s%b\n" "${BOLD}" "${HOSTNAME}" "${NC}"
-        printf "operating system    %b%s%b\n" "${BOLD}" "${OPERATING_SYSTEM} (${ARCHITECTURE})" "${NC}"
-        printf "kernel (installed)  %b%s%b\n" "${BOLD}" "${FREEBSD_INSTALLED_VERSION}" "${NC}"
-        printf "kernel (running)    %b%s%b\n" "${BOLD}" "${FREEBSD_RUNNING_VERSION}" "${NC}"
-        printf "userland version    %b%s%b\n" "${BOLD}" "${FREEBSD_USERLAND_VERSION}" "${NC}"
-        printf "uptime              %b%s%b\n\n" "${BOLD}" "${UPTIME_MESSAGE}" "${NC}"
+        printf "hostname            %s\n" "${HOSTNAME}"
+        printf "operating system    %s\n" "${OPERATING_SYSTEM} (${ARCHITECTURE})"
+        printf "kernel (installed)  %s\n" "${FREEBSD_INSTALLED_VERSION}"
+        printf "kernel (running)    %s\n" "${FREEBSD_RUNNING_VERSION}"
+        printf "userland version    %s\n" "${FREEBSD_USERLAND_VERSION}"
+        printf "uptime              %s\n\n" "${UPTIME_MESSAGE}"
         printf "%-14s %-12s %-14s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
         printf "%-14s %b%0s%b %0s%b%0s%b%0s%-4s %b%0s%b %0s%b%0s%b%0s%-6s %b%0s%b %0s%b%0s%b%0s%-4s\n\n" "" "${BOLD}" "${CPU_LOAD_AVERAGE_1MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_5MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
         printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
@@ -1312,7 +1159,7 @@ feature_uptime() {
     gather_metrics_uptime
 
     if [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "%b%s%b\n" "${BOLD}" "${UPTIME_MESSAGE}" "${NC}"
+        printf "%s\n" "${UPTIME_MESSAGE}"
     fi
     if [ "${ARGUMENT_UPTIME}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "uptime: ${UPTIME_MESSAGE}"
@@ -1429,56 +1276,48 @@ feature_alert() {
     gather_temperature_cpu
 
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-            printf "%b[!]%b %bcurrent server load of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+        if [ "${CPU_LOAD_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
+            printf "%b[%b%b!%b%b]%b current server load of %b%s%b%b%%%b exceeds the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
         else
-            printf "%b[i]%b %bcurrent server load of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%bi%b%b]%b current server load of %b%s%b%b%%%b does not exceed the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
         fi
         if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
-            printf "%b[!]%b %bcurrent memory usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%b!%b%b]%b current memory usage of %b%s%b%b%%%b exceeds the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
         else
-            printf "%b[i]%b %bcurrent memory usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%bi%b%b]%b current memory usage of %b%s%b%b%%%b does not exceed the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
         fi
         if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
-            printf "%b[!]%b %bcurrent disk usage of%b %b%s%b%b%% exceeds the threshold of%b %b%s%b%b%%%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%b!%b%b]%b current disk usage of %b%s%b%b%%%b exceeds the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
         else
-            printf "%b[i]%b %bcurrent disk usage of%b %b%s%b%b%% does not exceed the threshold of%b %b%s%b%b%%%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%bi%b%b]%b current disk usage of %b%s%b%b%%%b does not exceed the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
         fi
         if ! [ "${DISABLE_ALERT_CPUTEMP}" = '1' ]; then
             if [ "${CPU_TEMPERATURE}" -gt "${CONFIG_THRESHOLD_CPUTEMP}" ]; then
-                printf "%b[!]%b %bcurrent CPU temperature of%b %b%s%b%bC exceeds the threshold of%b %b%s%b%bC%b\n" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
+                printf "%b[%b%b!%b%b]%b current CPU temperature of %b%s%b%bC%b exceeds the threshold of%b %b%s%b%bC\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
             else
-                printf "%b[i]%b %bcurrent CPU temperature of%b %b%s%b%bC does not exceed the threshold of%b %b%s%b%bC%b\n" "${YELLOW}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
+                printf "%b[%b%bi%b%b]%b current CPU temperature of %b%s%b%bC%b does not exceed the threshold of %b%s%b%bC%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
             fi
         fi
     fi
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
-        if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-            method_logger "current server load of ${CPU_LOAD_PERCENTAGE_15MIN} exceeds the threshold of ${CONFIG_THRESHOLD_LOAD}"
-        #else
-        #    method_logger "current server load of ${CPU_LOAD_PERCENTAGE_15MIN} does not exceed the threshold of ${CONFIG_THRESHOLD_LOAD}"
+        if [ "${CPU_LOAD_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
+            method_logger "current server load of ${CPU_LOAD_PERCENTAGE} exceeds the threshold of ${CONFIG_THRESHOLD_LOAD}"
         fi
         if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
             method_logger "current memory usage of ${MEMORY_USED_NOARC_PERCENTAGE} exceeds the threshold of ${CONFIG_THRESHOLD_MEMORY}"
-        #else
-        #    method_logger "current memory usage of ${MEMORY_USED_NOARC_PERCENTAGE} does not exceed the threshold of ${CONFIG_THRESHOLD_MEMORY}"
         fi
         if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
             method_logger "current disk usage of ${ROOT_PARTITION_USED_PERCENTAGE} exceeds the threshold of ${CONFIG_THRESHOLD_DISK}"
-        #else
-        #    method_logger "current disk usage of ${ROOT_PARTITION_USED_PERCENTAGE} does not exceed the threshold of ${CONFIG_THRESHOLD_DISK}"
         fi
         if ! [ "${DISABLE_ALERT_CPUTEMP}" = '1' ]; then
             if [ "${CPU_TEMPERATURE}" -gt "${CONFIG_THRESHOLD_CPUTEMP}" ]; then
                 method_logger "current CPU temperature of ${CPU_TEMPERATURE}C exceeds the threshold of ${CONFIG_THRESHOLD_CPUTEMP}C"
-            #else
-            #    method_logger "current CPU temperature of ${CPU_TEMPERATURE} does not exceed the threshold of ${CONFIG_THRESHOLD_CPUTEMP}"
             fi
         fi
     fi
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
-        if [ "${CPU_LOAD_PERCENTAGE_15MIN}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-            TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent server load (${CPU_LOAD_PERCENTAGE_15MIN}%) exceeds the threshold (${CONFIG_THRESHOLD_LOAD}%).")"
+        if [ "${CPU_LOAD_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
+            TELEGRAM_MESSAGE="$(echo -e "%e2%9a%a0 <b>[ALERT]</b> <code>${HOSTNAME}</code>\\nCurrent server load (${CPU_LOAD_PERCENTAGE}%) exceeds the threshold (${CONFIG_THRESHOLD_LOAD}%).")"
             method_telegram
         fi
         if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
@@ -1640,7 +1479,7 @@ serverbot_main() {
     serverbot_argument_validate
 
     # default to method CLI if no method is used
-    if [ "${ARGUMENT_METHOD}" = '0' ]; then
+    if [ "${ARGUMENT_METHODS_COMBINED}" = '0' ]; then
         ARGUMENT_CLI='1'
     fi
     # direct serverbot to the right feature function
