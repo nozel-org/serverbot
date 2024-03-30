@@ -1,6 +1,11 @@
 # Changelog
 This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for code. For pre-release versions the `-DEVELOPMENT` identifier is used. For release versions the `-RELEASE` identifier is used.
 
+### 1.11.0-RELEASE ([30-03-2024](https://codeberg.org/nozel/serverbot/commit/79b69f7b88ca27757374ec546ad2aa5c4c6d66cf))
+- Made Telegram messages more consistent and made the output more compact #85 #122.
+- Removed colors from CLI output #104.
+- Fixed a wrong reference to botmanager #120.
+
 ### 1.10.0-RELEASE ([04-02-2024](https://codeberg.org/nozel/serverbot/commit/9898942101089aaefad518c100319c8eceec7fd3))
 - Reduced repetition of code in gather_metrics_uptime #114.
 - Nested cron helper functions, #107.
@@ -86,5 +91,5 @@ Aside from many new features, the existing code has been refactored and improved
 - Added feature Alert.
 - Added method Telegram.
 
-### 1.0.0-STABLE ([14-02-2021](https://github.com/nozel-org/serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
+### 1.0.0-RELEASE ([14-02-2021](https://github.com/nozel-org/serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
 - First stable release.
