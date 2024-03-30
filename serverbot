@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #############################################################################
-# Version 1.10.0-RELEASE (04-02-2024)
+# Version 1.11.0-RELEASE (30-03-2024)
 #############################################################################
 
 #############################################################################
@@ -26,7 +26,7 @@
 # Contact:
 # > E-mail      mail@nozel.org
 # > Website     https://nozel.org
-# > Codeberg    https://codeberg.org/nozel/bottleneck
+# > Codeberg    https://codeberg.org/nozel/serverbot
 #############################################################################
 
 #############################################################################
@@ -34,8 +34,8 @@
 #############################################################################
 
 # version and date
-SERVERBOT_VERSION='1.10.0'
-SERVERBOT_VERSION_DATE='04-02-2024'
+SERVERBOT_VERSION='1.11.0'
+SERVERBOT_VERSION_DATE='30-03-2024'
 
 # file locations
 SERVERBOT_CONFIGURATION='/usr/local/etc/serverbot.conf'
@@ -1099,9 +1099,9 @@ feature_summary() {
     gather_metrics_disk
 
     if [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "%-9s %b%9s%b %1s %7s %4s%b%0s%b%0s%0s\n" "load" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "" "" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
-        printf "%-9s %b%9s%b %b%1s%b %b%7s%b %4s%b%0s%b%0s%0s\n" "memory" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "${YELLOW}" "/" "${NC}" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")"
-        printf "%-9s %b%9s%b %b%1s%b %b%7s%b %4s%b%0s%b%0s%0s\n" "disk" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "${YELLOW}" "/" "${NC}" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")"
+        printf "%-9s %9s %1s %7s %4s%0s%0s%0s\n" "load" "${CPU_LOAD_AVERAGE_15MIN}" "" "" "(" "${CPU_LOAD_PERCENTAGE_15MIN}" "%" ")"
+        printf "%-9s %9s %1s %7s %4s%0s%0s%0s\n" "memory" "${MEMORY_USED_NOARC_VIEW}" "/" "${MEMORY_TOTAL_VIEW}" "(" "${MEMORY_USED_NOARC_PERCENTAGE}" "%" ")"
+        printf "%-9s %9s %1s %7s %4s%0s%0s%0s\n" "disk" "${ROOT_PARTITION_USED_VIEW}" "/" "${ROOT_PARTITION_SIZE_VIEW}" "(" "${ROOT_PARTITION_USED_PERCENTAGE}" "%" ")"
     fi
     if [ "${ARGUMENT_SUMMARY}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "load ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
@@ -1129,12 +1129,12 @@ feature_overview() {
         printf "kernel (running)    %s\n" "${FREEBSD_RUNNING_VERSION}"
         printf "userland version    %s\n" "${FREEBSD_USERLAND_VERSION}"
         printf "uptime              %s\n\n" "${UPTIME_MESSAGE}"
-        printf "%-14s %-12s %-14s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
-        printf "%-14s %b%0s%b %0s%b%0s%b%0s%-4s %b%0s%b %0s%b%0s%b%0s%-6s %b%0s%b %0s%b%0s%b%0s%-4s\n\n" "" "${BOLD}" "${CPU_LOAD_AVERAGE_1MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_5MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
-        printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
-        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-2s %b%0s%b %0s%b%0s%b%0s%-14s\n\n" "" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${MEMORY_UNUSED_ARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_UNUSED_ARC_PERCENTAGE}" "${NC}" "%" ")"
-        printf "%-14s %-12s %-14s %-14s\n" "disk usage" "total" "used" "free"
-        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-5s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${ROOT_PARTITION_FREE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_FREE_PERCENTAGE}" "${NC}" "%" ")"
+        printf "%-14s %-14s %-16s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
+        printf "%-14s %-14s %-16s %-16s\n\n" "" "${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%)" "${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%)" "${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
+        printf "%-14s %-14s %-16s %-16s\n" "memory" "total" "used" "unused"
+        printf "%-14s %-14s %-16s %-16s\n\n" "" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%)" "${MEMORY_UNUSED_ARC_VIEW} (${MEMORY_UNUSED_ARC_PERCENTAGE}%)"
+        printf "%-14s %-14s %-16s %-16s\n" "disk usage" "total" "used" "free"
+        printf "%-14s %-14s %-16s %-16s\n" "" "${ROOT_PARTITION_SIZE_VIEW}" "${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%)" "${ROOT_PARTITION_FREE_VIEW} (${ROOT_PARTITION_FREE_PERCENTAGE}%)"
     fi
     if [ "${ARGUMENT_OVERVIEW}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "hostname: ${HOSTNAME}"
@@ -1176,8 +1176,8 @@ feature_cpu() {
     gather_metrics_cpu
 
     if [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "%-14s %-12s %-14s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
-        printf "%-14s %b%0s%b %0s%b%0s%b%0s%-4s %b%0s%b %0s%b%0s%b%0s%-6s %b%0s%b %0s%b%0s%b%0s%-4s\n" "" "${BOLD}" "${CPU_LOAD_AVERAGE_1MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_1MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_5MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_5MIN}" "${NC}" "%" ")" "${BOLD}" "${CPU_LOAD_AVERAGE_15MIN}" "${NC}" "(" "${YELLOW}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "%" ")"
+        printf "%-14s %-14s %-16s %-16s\n" "cpu load" "1 min" "5 min" "15 min"
+        printf "%-14s %-14s %-16s %-16s\n" "" "${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%)" "${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%)" "${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
     fi
     if [ "${ARGUMENT_CPU}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "cpu load (1/5/15 min): ${CPU_LOAD_AVERAGE_1MIN} (${CPU_LOAD_PERCENTAGE_1MIN}%) / ${CPU_LOAD_AVERAGE_5MIN} (${CPU_LOAD_PERCENTAGE_5MIN}%) / ${CPU_LOAD_AVERAGE_15MIN} (${CPU_LOAD_PERCENTAGE_15MIN}%)"
@@ -1194,8 +1194,8 @@ feature_memory() {
     gather_metrics_memory
 
     if [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "%-14s %-12s %-14s %-14s\n" "memory" "total" "used" "unused"
-        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-2s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${MEMORY_TOTAL_VIEW}" "${NC}" "${BOLD}" "${MEMORY_USED_NOARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${MEMORY_UNUSED_ARC_VIEW}" "${NC}" "(" "${YELLOW}" "${MEMORY_UNUSED_ARC_PERCENTAGE}" "${NC}" "%" ")"
+        printf "%-14s %-14s %-16s %-16s\n" "memory" "total" "used" "unused"
+        printf "%-14s %-14s %-16s %-16s\n" "" "${MEMORY_TOTAL_VIEW}" "${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%)" "${MEMORY_UNUSED_ARC_VIEW} (${MEMORY_UNUSED_ARC_PERCENTAGE}%)"
     fi
     if [ "${ARGUMENT_MEMORY}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "memory (total|used/unused): ${MEMORY_TOTAL_VIEW} | ${MEMORY_USED_NOARC_VIEW} (${MEMORY_USED_NOARC_PERCENTAGE}%) / ${MEMORY_UNUSED_ARC_VIEW} (${MEMORY_UNUSED_ARC_PERCENTAGE}%)"
@@ -1239,8 +1239,8 @@ feature_disk() {
     gather_metrics_disk
 
     if [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
-        printf "%-14s %-12s %-14s %-14s\n" "disk usage" "total" "used" "free"
-        printf "%-14s %b%-12s%b %b%0s%b %0s%b%0s%b%0s%-5s %b%0s%b %0s%b%0s%b%0s%-14s\n" "" "${BOLD}" "${ROOT_PARTITION_SIZE_VIEW}" "${NC}" "${BOLD}" "${ROOT_PARTITION_USED_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "%" ")" "${BOLD}" "${ROOT_PARTITION_FREE_VIEW}" "${NC}" "(" "${YELLOW}" "${ROOT_PARTITION_FREE_PERCENTAGE}" "${NC}" "%" ")"
+        printf "%-14s %-14s %-16s %-16s\n" "disk usage" "total" "used" "free"
+        printf "%-14s %-14s %-16s %-16s\n" "" "${ROOT_PARTITION_SIZE_VIEW}" "${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%)" "${ROOT_PARTITION_FREE_VIEW} (${ROOT_PARTITION_FREE_PERCENTAGE}%)"
     fi
     if [ "${ARGUMENT_DISK}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         method_logger "disk usage (total|used/unused): ${ROOT_PARTITION_SIZE_VIEW} | ${ROOT_PARTITION_USED_VIEW} (${ROOT_PARTITION_USED_PERCENTAGE}%) / ${ROOT_PARTITION_FREE_VIEW} (${ROOT_PARTITION_FREE_PERCENTAGE}%)"
@@ -1277,25 +1277,25 @@ feature_alert() {
 
     if [ "${ARGUMENT_ALERT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
         if [ "${CPU_LOAD_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_LOAD}" ]; then
-            printf "%b[%b%b!%b%b]%b current server load of %b%s%b%b%%%b exceeds the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%b!%b%b]%b current server load of %b%s%b%% exceeds the threshold of %b%s%b%%\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_LOAD_PERCENTAGE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}"
         else
-            printf "%b[%b%bi%b%b]%b current server load of %b%s%b%b%%%b does not exceed the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%bi%b%b]%b current server load of %b%s%b%% does not exceed the threshold of %b%s%b%%\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${CPU_LOAD_PERCENTAGE_15MIN}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_LOAD}" "${NC}"
         fi
         if [ "${MEMORY_USED_NOARC_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_MEMORY}" ]; then
-            printf "%b[%b%b!%b%b]%b current memory usage of %b%s%b%b%%%b exceeds the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%b!%b%b]%b current memory usage of %b%s%b%% exceeds the threshold of %b%s%b%%\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}"
         else
-            printf "%b[%b%bi%b%b]%b current memory usage of %b%s%b%b%%%b does not exceed the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%bi%b%b]%b current memory usage of %b%s%b%% does not exceed the threshold of %b%s%b%%\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${MEMORY_USED_NOARC_PERCENTAGE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_MEMORY}" "${NC}"
         fi
         if [ "${ROOT_PARTITION_USED_PERCENTAGE}" -gt "${CONFIG_THRESHOLD_DISK}" ]; then
-            printf "%b[%b%b!%b%b]%b current disk usage of %b%s%b%b%%%b exceeds the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%b!%b%b]%b current disk usage of %b%s%b%% exceeds the threshold of %b%s%b%%\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}"
         else
-            printf "%b[%b%bi%b%b]%b current disk usage of %b%s%b%b%%%b does not exceed the threshold of %b%s%b%b%%%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}" "${BOLD}" "${NC}"
+            printf "%b[%b%bi%b%b]%b current disk usage of %b%s%b%% does not exceed the threshold of %b%s%b%%\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${ROOT_PARTITION_USED_PERCENTAGE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_DISK}" "${NC}"
         fi
         if ! [ "${DISABLE_ALERT_CPUTEMP}" = '1' ]; then
             if [ "${CPU_TEMPERATURE}" -gt "${CONFIG_THRESHOLD_CPUTEMP}" ]; then
-                printf "%b[%b%b!%b%b]%b current CPU temperature of %b%s%b%bC%b exceeds the threshold of%b %b%s%b%bC\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
+                printf "%b[%b%b!%b%b]%b current CPU temperature of %b%s%bC exceeds the threshold of%b %b%s%bC\n" "${BOLD}" "${NC}" "${LRED}" "${NC}" "${BOLD}" "${NC}" "${LRED}" "${CPU_TEMPERATURE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}"
             else
-                printf "%b[%b%bi%b%b]%b current CPU temperature of %b%s%b%bC%b does not exceed the threshold of %b%s%b%bC%b\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${CPU_TEMPERATURE}" "${NC}" "${BOLD}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}" "${BOLD}" "${NC}"
+                printf "%b[%b%bi%b%b]%b current CPU temperature of %b%s%bC does not exceed the threshold of %b%s%bC\n" "${BOLD}" "${NC}" "${LGREEN}" "${NC}" "${BOLD}" "${NC}" "${LGREEN}" "${CPU_TEMPERATURE}" "${NC}" "${YELLOW}" "${CONFIG_THRESHOLD_CPUTEMP}" "${NC}"
             fi
         fi
     fi
@@ -1344,21 +1344,21 @@ feature_baseupdates() {
 
     if [ "${ARGUMENT_BASEUPDATES}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
         if [ "${UPDATES_BASE}" = '1' ]; then
-            printf 'There are pending FreeBSD base system updates available.\n'
+            printf 'Pending FreeBSD base system updates available.\n'
         elif [ "${UPDATES_BASE}" = '0' ]; then
-            printf 'There are no pending FreeBSD base system updates available.\n'
+            printf 'No pending FreeBSD base system updates available.\n'
         fi
     fi
     if [ "${ARGUMENT_BASEUPDATES}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         if [ "${UPDATES_BASE}" = '1' ]; then
-            method_logger 'There are pending FreeBSD base system updates available.'
+            method_logger 'Pending FreeBSD base system updates available.'
         elif [ "${UPDATES_BASE}" = '0' ]; then
-            method_logger 'there are no pending FreeBSD base system updates available.'
+            method_logger 'Pending FreeBSD base system updates available.'
         fi
     fi
     if [ "${ARGUMENT_BASEUPDATES}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
         if [ "${UPDATES_BASE}" = '1' ]; then
-            TELEGRAM_MESSAGE="$(printf "<b>There are pending FreeBSD base system updates available on %s.</b>" "${HOSTNAME}")"
+            TELEGRAM_MESSAGE="$(printf "<b>Pending FreeBSD base system updates available on %s.</b>" "${HOSTNAME}")"
             method_telegram
         fi
     fi
@@ -1371,16 +1371,16 @@ feature_pkgupdates() {
 
     if [ "${ARGUMENT_PKGUPDATES}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
         if [ -z "${UPDATES_PKG}" ]; then
-            printf 'There are no pending package updates available.\n'
+            printf 'No pending package updates available.\n'
         else
-            printf "The following pending package updates are available:\n%s\n" "${UPDATES_PKG}"
+            printf "Pending package updates available:\n%s\n" "${UPDATES_PKG}"
         fi
     fi
     if [ "${ARGUMENT_PKGUPDATES}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         if [ -z "${UPDATES_PKG}" ]; then
-            method_logger 'there are no pending package updates available.'
+            method_logger 'No pending package updates available.'
         else
-            method_logger "The following pending package updates are available: ${UPDATES_PKG}"
+            method_logger "Pending package updates are available: ${UPDATES_PKG}"
         fi
     fi
     if [ "${ARGUMENT_PKGUPDATES}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
@@ -1398,21 +1398,21 @@ feature_pkgaudit() {
 
     if [ "${ARGUMENT_PKGAUDIT}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
         if [ -z "${AUDIT_PKG}" ]; then
-            printf 'There are no known package vulnerabilities to report.\n'
+            printf 'No known package vulnerabilities to report.\n'
         else
-            printf "The following packages contain known vulnerabilities:\n%s\n" "${AUDIT_PKG}"
+            printf "Packages contain known vulnerabilities:\n%s\n" "${AUDIT_PKG}"
         fi
     fi
     if [ "${ARGUMENT_PKGAUDIT}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         if [ -z "${AUDIT_PKG}" ]; then
-            method_logger 'There are no known package vulnerabilities to report.'
+            method_logger 'No known package vulnerabilities to report.'
         else
-            method_logger "The following packages contain known vulnerabilities: ${AUDIT_PKG}"
+            method_logger "Packages contain known vulnerabilities: ${AUDIT_PKG}"
         fi
     fi
     if [ "${ARGUMENT_PKGAUDIT}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
         if [ -n "${AUDIT_PKG}" ]; then
-            TELEGRAM_MESSAGE="$(printf "<b>The following packages on %s contain vulnerabilities</b>:\\n<code>%s</code>" "${HOSTNAME}" "${AUDIT_PKG}")"
+            TELEGRAM_MESSAGE="$(printf "<b>Packages on %s contain vulnerabilities</b>:\\n<code>%s</code>" "${HOSTNAME}" "${AUDIT_PKG}")"
             method_telegram
         fi
     fi
@@ -1425,21 +1425,21 @@ feature_pkgchecksum() {
 
     if [ "${ARGUMENT_PKGCHECKSUM}" = '1' ] && [ "${ARGUMENT_CLI}" = '1' ]; then
         if [ -z "${CHECKSUM_PKG}" ]; then
-            printf 'There are no package with invalid checksums.\n'
+            printf 'No packages contain invalid checksums.\n'
         else
-            printf "The following packages have invalid checksums:\n%s\n" "${CHECKSUM_PKG}"
+            printf "Packages contain invalid checksums:\n%s\n" "${CHECKSUM_PKG}"
         fi
     fi
     if [ "${ARGUMENT_PKGCHECKSUM}" = '1' ] && [ "${ARGUMENT_LOGGER}" = '1' ]; then
         if [ -z "${CHECKSUM_PKG}" ]; then
-            method_logger 'There are no package with invalid checksums.'
+            method_logger 'No packages contain invalid checksums.'
         else
-            method_logger "The following packages have invalid checksums: ${CHECKSUM_PKG}"
+            method_logger "Packages contain invalid checksums: ${CHECKSUM_PKG}"
         fi
     fi
     if [ "${ARGUMENT_PKGCHECKSUM}" = '1' ] && [ "${ARGUMENT_TELEGRAM}" = '1' ]; then
         if [ -n "${CHECKSUM_PKG}" ]; then
-            TELEGRAM_MESSAGE="$(printf "<b>The following packages on %s contain invalid checksums</b>:\\n<code>%s</code>" "${HOSTNAME}" "${CHECKSUM_PKG}")"
+            TELEGRAM_MESSAGE="$(printf "<b>Packages on %s contain invalid checksums</b>:\\n<code>%s</code>" "${HOSTNAME}" "${CHECKSUM_PKG}")"
             method_telegram
         fi
     fi
