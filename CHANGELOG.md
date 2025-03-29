@@ -1,12 +1,28 @@
 # Changelog
+
 This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for code. For pre-release versions the `-DEVELOPMENT` identifier is used. For release versions the `-RELEASE` identifier is used.
 
+### 1.12.0-RELEASE ([29-03-2025](https://codeberg.org/nozel/serverbot/commit/cce5a5ab96ed649c008f81368980dc4309be58b3))
+
+- Added SSD and HDD temperature support to feature alert #90.
+- Fixed a bug that showed shell color code in feature alert with method cli #131.
+- Moved gather/get functions from feature functions to the argument handling logic #130.
+- Moved required functions from feature functions to the argument handling logic #129.
+- Added support to gather hardware type (e.g. virtual machine or bare metal) #128.
+- Simplified some function names #127.
+- Changed 'gather' to 'get' in functions, which is more fitting #126.
+- Escaped brackets in option_cron_validate_schedule function #125.
+- Added new temperature thresholds for HDD and SSD to the serverbot.conf default template file.
+- Moved LOAD_INTERNAL to feature alert specific configuration #113.
+
 ### 1.11.0-RELEASE ([30-03-2024](https://codeberg.org/nozel/serverbot/commit/79b69f7b88ca27757374ec546ad2aa5c4c6d66cf))
+
 - Made Telegram messages more consistent and made the output more compact #85 #122.
 - Removed colors from CLI output #104.
 - Fixed a wrong reference to botmanager #120.
 
 ### 1.10.0-RELEASE ([04-02-2024](https://codeberg.org/nozel/serverbot/commit/9898942101089aaefad518c100319c8eceec7fd3))
+
 - Reduced repetition of code in gather_metrics_uptime #114.
 - Nested cron helper functions, #107.
 - Reduced repetition of feature specific actions in option_cron #109.
@@ -19,6 +35,7 @@ This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for cod
 - Reworked the use of colors in different features and options #104.
 
 ### 1.9.0-RELEASE ([02-02-2024](https://codeberg.org/nozel/serverbot/commit/b5a787fb85f81115ab3418a15d27385609e1461a))
+
 - Made cron file location variable #97.
 - Made serverbot.conf location variable #80.
 - Made cron option more readable and consistent #96.
@@ -26,11 +43,13 @@ This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for cod
 - Kernel version now distinguishes between jails and non-jails #88.
 
 ### 1.8.0-RELEASE ([31-01-2024](https://codeberg.org/nozel/serverbot/commit/88f4cc17b6e056a9372bedd6cba8cae14021cfa9))
+
 - Added CPU temperature for Intel and AMD processors to feature alert #19.
 - Changed copyright years to first year instead of last #92.
 - Fixed a bug that occurred when someone didn't configure alert thresholds #94.
 
 ### 1.7.0-RELEASE ([24-12-2023](https://codeberg.org/nozel/serverbot/commit/20fb9e8383916531d0fd5fc1202d014693749844))
+
 - Added validation to cron entries in serverbot.conf #68.
 - Made method cli the default method when no method is chosen #70.
 - Made help text more clear and helpful #76.
@@ -40,6 +59,7 @@ This project adheres to [Semantic Versioning 2.0.0](https://semver.org/) for cod
 - Fixed inconsistent variable validation #73.
 
 ### 1.6.0-RELEASE ([22-12-2023](https://codeberg.org/nozel/serverbot/commit/81841b4b5b2f51d911e733975da4ec1f4cd64243))
+
 Aside from many new features, the existing code has been refactored and improved considerably as well. Despite the large amount of changes, it's completely backwards compatible (hence the minor version increase).
 
 - Changed serverbot's license to Apache-2.0 #51.
@@ -53,6 +73,7 @@ Aside from many new features, the existing code has been refactored and improved
 - Refactored different pars of the code #52 #54 #53 #55 #56 #59 #60 #66 #67.
 
 ### 1.5.0-RELEASE ([28-01-2023](https://github.com/nozel-org/serverbot/commit/9297b2545c296697b32938eb851bd90d3e5e12ce))
+
 - Added shorter arguments.
 - Added the direct path of command binaries.
 - Added colors to CLI output for more clarity.
@@ -65,19 +86,23 @@ Aside from many new features, the existing code has been refactored and improved
 - Alert feature now accepts load thresholds higher than 100%.
 
 ### 1.4.0-RELEASE ([27-05-2022](https://github.com/nozel-org/serverbot/commit/e007966a2949659d0f223da4ecfb2de7ad2191cd))
+
 - Fixed a bug where hostname was shown twice in feature overview method telegram.
 - Zfs arc cache size has been subtracted from memory and alert features.
 - Feature memorytree-wide has been removed.
 - Wired memory has been broken down to arc and kernel in feature memorytree.
 
 ### 1.3.1-RELEASE ([26-05-2022](https://github.com/nozel-org/serverbot/commit/6cf4d6ec3051b7912c82adc025366ff3f56207ba))
+
 - Fixed a bug in option cron.
 
 ### 1.3.0-RELEASE ([26-05-2022](https://github.com/nozel-org/serverbot/commit/64fbec6c31a98963ce64e04c63b6678c6f002739))
+
 - Added ZFS file system compatibility.
 - Fixed a bug where SMT_ENABLE in serverbot.conf wouldn't work properly.
 
 ### 1.2.0-RELEASE ([02-05-2022](https://github.com/nozel-org/serverbot/commit/e839a0a4582919ea0a8547618a4097426083b911))
+
 - Extended serverbot.conf configuration parameter validation.
 - Fixed a bug where unused memory wasn't shown correctly.
 - Added feature uptime to method telegram.
@@ -86,10 +111,12 @@ Aside from many new features, the existing code has been refactored and improved
 - Removed ${TELEGRAM_URL} from serverbot.conf.
 
 ### 1.1.0-RELEASE ([23-04-2022](https://github.com/nozel-org/serverbot/commit/881c318e0aeac671a045b2701ac40d86dd807d49))
+
 - Changed STABLE tag to RELEASE tag.
 - Added serverbot.conf for additional options.
 - Added feature Alert.
 - Added method Telegram.
 
 ### 1.0.0-RELEASE ([14-02-2021](https://github.com/nozel-org/serverbot/commit/066fc9525af8daa444ba45648c61a5a450609002))
+
 - First stable release.
